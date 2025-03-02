@@ -27,6 +27,15 @@ class RoadRageGame {
         this.deltaTime = 0;
         this.players = {};
         this.playerId = null;
+        this.audioManager = null;
+        this.socket = null;
+        
+        // Game settings
+        this.gameTime = 0;
+        this.lastLapTime = 0;
+        this.lapTime = 0;
+        this.lapsCompleted = 0;
+        this.totalLaps = 3;
         
         // Bind methods
         this.init = this.init.bind(this);
@@ -45,6 +54,9 @@ class RoadRageGame {
         this.checkPlayerCollisions = this.checkPlayerCollisions.bind(this);
         this.handleCombatAction = this.handleCombatAction.bind(this);
         this.endGame = this.endGame.bind(this);
+        this.enforceTrackBoundaries = this.enforceTrackBoundaries.bind(this);
+        this.finishRace = this.finishRace.bind(this);
+        this.gameOver = this.gameOver.bind(this);
     }
     
     init() {
@@ -55,6 +67,15 @@ class RoadRageGame {
             this.ui = new GameUI();
             this.ui.init();
             this.ui.showLoadingScreen();
+            
+            // Initialize audio manager
+            try {
+                this.audioManager = new AudioManager();
+                this.audioManager.init();
+            } catch (error) {
+                console.error('Error initializing AudioManager:', error);
+                this.audioManager = null;
+            }
             
             // Initialize network
             try {
@@ -214,6 +235,18 @@ class RoadRageGame {
             this.playerBike = new Bike(this.scene, bikeType);
             this.playerBike.create();
             
+            // Position bike at the starting point of the track
+            if (this.track && this.track.trackSpec && this.track.trackSpec.checkpoints && this.track.trackSpec.checkpoints.length > 0) {
+                const startingPoint = this.track.trackSpec.checkpoints[0].position;
+                this.playerBike.object.position.set(startingPoint.x, startingPoint.y, startingPoint.z);
+                this.playerBike.position = { 
+                    x: startingPoint.x, 
+                    y: startingPoint.y, 
+                    z: startingPoint.z 
+                };
+                console.log('Positioned bike at starting point:', startingPoint);
+            }
+            
             // Position camera behind bike
             this.camera.position.set(0, 5, -10);
             this.camera.lookAt(this.playerBike.object.position);
@@ -363,136 +396,209 @@ class RoadRageGame {
     }
     
     startGame() {
-        console.log('Starting game...');
-        
-        // Set game state to started
-        this.isStarted = true;
-        
-        // Hide countdown overlay if visible
-        if (this.ui) {
-            this.ui.hideCountdownOverlay();
-            this.ui.showNotification('Game started! Use WASD or arrow keys to control the bike.');
-        }
-        
-        // Start the race if track exists
-        if (this.track && typeof this.track.startRace === 'function') {
-            this.track.startRace();
-        } else {
-            console.warn('Track not initialized or startRace method not available');
-        }
-        
-        // Reset bike position if needed
-        if (this.playerBike) {
-            this.playerBike.reset();
-            console.log('Bike reset to starting position');
-        }
-        
-        console.log('Game started successfully, isStarted =', this.isStarted);
-    }
-    
-    update() {
-        if (!this.isInitialized || this.isPaused || this.isOver) {
+        if (!this.isInitialized) {
+            console.error('Cannot start game: Game not initialized');
             return;
         }
         
-        // Update frame counter
-        this.frameCount++;
+        // Reset game state
+        this.gameTime = 0;
+        this.lastLapTime = 0;
+        this.lapTime = 0;
+        this.lapsCompleted = 0;
+        this.frameCount = 0;
         
-        // Get control state
+        // Show countdown
+        this.ui.showCountdownOverlay();
+        
+        // Start countdown
+        let countdown = 3;
+        this.ui.updateCountdown(countdown);
+        
+        // Play countdown sound
+        this.playSound('countdown');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            this.ui.updateCountdown(countdown);
+            
+            if (countdown > 0) {
+                // Play countdown sound
+                this.playSound('countdown');
+            } else {
+                // Clear interval
+                clearInterval(countdownInterval);
+                
+                // Hide countdown overlay
+                this.ui.hideCountdownOverlay();
+                
+                // Set game start time
+                this.ui.setGameStartTime();
+                
+                // Start game
+                this.isGameRunning = true;
+                this.isStarted = true;
+                
+                // Play start sound
+                this.playSound('start');
+                
+                // Start engine sound
+                this.playSound('engine', 0.3);
+                
+                // Start background music
+                this.playMusic();
+            }
+        }, 1000);
+    }
+    
+    update(deltaTime) {
+        if (!this.isGameRunning || this.isPaused) return;
+        
+        // Update game timer
+        this.gameTime += deltaTime;
+        
+        // Get current control state
         const controlState = this.controls.getState();
         
-        // Debug logging
-        if (this.frameCount % 60 === 0) { // Log once per second (assuming 60fps)
-            console.log('Game update - Frame:', this.frameCount);
-            console.log('Game update - Controls state:', controlState);
-            console.log('Game update - Delta time:', this.deltaTime);
-            console.log('Game update - Is started:', this.isStarted);
+        // Debug logging (every 60 frames to avoid console spam)
+        if (this.frameCount % 60 === 0) {
+            console.log('Game update - Control state:', controlState);
+            console.log('Game update - isGameRunning:', this.isGameRunning);
+            console.log('Game update - isStarted:', this.isStarted);
+            console.log('Game update - isPaused:', this.isPaused);
         }
         
         // Update player bike
-        if (this.playerBike && this.isStarted) {
-            this.playerBike.update(this.deltaTime, controlState);
-            
-            // Update camera position
-            this.updateCameraPosition();
-            
-            // Update UI
-            if (this.ui) {
-                // Update speedometer
-                this.ui.updateSpeedometer(this.playerBike.speed);
-                
-                // Update health bar
-                this.ui.updateHealthBar(this.playerBike.health);
-            }
-            
-            // Send position update to server (every 3 frames)
-            if (this.frameCount % 3 === 0 && this.network && typeof this.network.sendPlayerUpdate === 'function') {
-                try {
-                    this.network.sendPlayerUpdate({
-                        position: this.playerBike.object.position,
-                        rotation: {
-                            x: this.playerBike.object.rotation.x,
-                            y: this.playerBike.object.rotation.y,
-                            z: this.playerBike.object.rotation.z
-                        },
-                        speed: this.playerBike.speed
-                    });
-                } catch (error) {
-                    console.warn('Error sending player update:', error);
-                }
-            }
-            
-            // Check for collisions with other players
-            this.checkPlayerCollisions();
-            
-            // Check track checkpoints
-            if (this.track) {
-                const checkpointPassed = this.track.checkCheckpoints(this.playerBike.object.position);
-                
-                if (checkpointPassed) {
-                    // Update UI
-                    if (this.ui) {
-                        this.ui.updateLapCounter(this.track.getCurrentLap(), this.track.getTotalLaps());
-                    }
-                    
-                    // Check if race is finished
-                    if (this.track.getCurrentLap() > this.track.getTotalLaps()) {
-                        this.endGame();
-                    }
-                }
-            }
+        const bikeData = this.playerBike.update(deltaTime, controlState);
+        
+        // More debug logging
+        if (this.frameCount % 60 === 0) {
+            console.log('Game update - Bike data:', bikeData);
         }
         
-        // Update other players
-        if (this.players) {
-            Object.values(this.players).forEach(player => {
-                if (player && player.bike) {
-                    player.bike.update(this.deltaTime);
+        // Update UI
+        if (this.ui) {
+            this.ui.updateSpeedometer(bikeData.speed);
+            this.ui.updateHealth(bikeData.health);
+            this.ui.updateGameTime(this.gameTime);
+        }
+        
+        // Check if track exists
+        if (this.track) {
+            // Check for checkpoint/lap completion
+            const checkpointResult = this.track.checkCheckpoints(bikeData.position);
+            if (checkpointResult) {
+                if (checkpointResult.checkpointPassed) {
+                    console.log('Checkpoint passed:', checkpointResult.checkpointIndex);
+                    // Play checkpoint sound
+                    this.playSound('checkpoint');
                 }
+                
+                if (checkpointResult.lapCompleted) {
+                    console.log('Lap completed!');
+                    this.lapTime = this.gameTime - this.lastLapTime;
+                    this.lastLapTime = this.gameTime;
+                    this.lapsCompleted++;
+                    
+                    // Update UI with lap info
+                    if (this.ui) {
+                        this.ui.updateLapCounter(this.lapsCompleted, this.totalLaps);
+                        this.ui.updateLapTime(this.lapTime);
+                    }
+                    
+                    // Play lap completed sound
+                    this.playSound('lapComplete');
+                    
+                    // Check if race is finished
+                    if (this.lapsCompleted >= this.totalLaps) {
+                        this.finishRace();
+                    }
+                }
+            }
+            
+            // Check for obstacle collisions
+            const collisionResult = this.track.checkObstacleCollisions(bikeData.position);
+            if (collisionResult && collisionResult.collision) {
+                console.log('Collision with obstacle:', collisionResult.type);
+                
+                // Apply damage based on obstacle type
+                let damage = 0;
+                switch (collisionResult.type) {
+                    case 'rock':
+                        damage = 10;
+                        this.playSound('collision');
+                        break;
+                    case 'car':
+                        damage = 20;
+                        this.playSound('crash');
+                        break;
+                    case 'oil':
+                        damage = 5;
+                        this.playSound('skid');
+                        break;
+                }
+                
+                // Apply damage to bike
+                this.playerBike.takeDamage(damage);
+                
+                // Update UI
+                if (this.ui) {
+                    this.ui.updateHealth(this.playerBike.health);
+                }
+                
+                // Check if bike is destroyed
+                if (this.playerBike.health <= 0) {
+                    this.gameOver();
+                }
+            }
+            
+            // Enforce track boundaries
+            this.enforceTrackBoundaries();
+        }
+        
+        // Update camera
+        this.updateCameraPosition();
+        
+        // Update network position (every 5 frames to reduce network traffic)
+        if (this.frameCount % 5 === 0 && this.socket && this.socket.connected) {
+            this.socket.emit('position_update', {
+                position: {
+                    x: bikeData.position.x,
+                    y: bikeData.position.y,
+                    z: bikeData.position.z
+                },
+                rotation: {
+                    x: bikeData.rotation.x,
+                    y: bikeData.rotation.y,
+                    z: bikeData.rotation.z
+                },
+                speed: bikeData.speed
             });
         }
+        
+        this.frameCount++;
     }
     
     updateCameraPosition() {
-        if (!this.playerBike || !this.camera) return;
+        if (!this.camera || !this.playerBike) return;
         
         // Calculate camera position based on bike position and rotation
         const bikePosition = this.playerBike.object.position;
         const bikeRotation = this.playerBike.object.rotation;
         
-        // Camera distance and height
+        // Calculate camera offset (behind and above the bike)
         const distance = 10;
         const height = 5;
         
-        // Calculate camera position behind the bike
+        // Calculate camera position based on bike's direction
         const cameraX = bikePosition.x - Math.sin(bikeRotation.y) * distance;
         const cameraY = bikePosition.y + height;
         const cameraZ = bikePosition.z - Math.cos(bikeRotation.y) * distance;
         
-        // Smoothly move camera to new position
+        // Update camera position
         this.camera.position.set(cameraX, cameraY, cameraZ);
         
-        // Look at bike
+        // Make camera look at bike
         this.camera.lookAt(bikePosition);
     }
     
@@ -511,8 +617,16 @@ class RoadRageGame {
             // Limit delta time to prevent large jumps
             if (this.deltaTime > 0.1) this.deltaTime = 0.1;
             
+            // Debug logging (every 300 frames to avoid console spam)
+            if (this.frameCount % 300 === 0) {
+                console.log('Game loop - deltaTime:', this.deltaTime);
+                console.log('Game loop - isGameRunning:', this.isGameRunning);
+                console.log('Game loop - isStarted:', this.isStarted);
+                console.log('Game loop - isPaused:', this.isPaused);
+            }
+            
             // Update game state
-            this.update();
+            this.update(this.deltaTime);
             
             // Render scene
             this.render();
@@ -710,6 +824,153 @@ class RoadRageGame {
             };
             
             this.ui.showGameOverOverlay(results);
+        }
+    }
+    
+    // Add a new method to enforce track boundaries
+    enforceTrackBoundaries() {
+        if (!this.track || !this.playerBike) return;
+        
+        const bikePosition = this.playerBike.object.position;
+        const trackBounds = this.track.getTrackBounds();
+        
+        if (!this.track.isWithinTrackBoundaries(bikePosition)) {
+            // Calculate direction vector from bike to nearest point on track
+            const nearestPoint = this.track.getNearestPointOnTrack(bikePosition);
+            
+            if (nearestPoint) {
+                // Calculate direction vector from bike to nearest point
+                const directionX = nearestPoint.x - bikePosition.x;
+                const directionZ = nearestPoint.z - bikePosition.z;
+                
+                // Normalize direction vector
+                const distance = Math.sqrt(directionX * directionX + directionZ * directionZ);
+                const normalizedDirX = directionX / distance;
+                const normalizedDirZ = directionZ / distance;
+                
+                // Apply force to push bike back to track
+                const forceMagnitude = 5.0; // Adjust as needed
+                this.playerBike.object.position.x += normalizedDirX * forceMagnitude;
+                this.playerBike.object.position.z += normalizedDirZ * forceMagnitude;
+                
+                // Also update the bike's internal position to match
+                this.playerBike.position.x = this.playerBike.object.position.x;
+                this.playerBike.position.z = this.playerBike.object.position.z;
+                
+                // Reduce speed as penalty for going off track
+                this.playerBike.speed *= 0.8;
+                
+                // Play off-track sound
+                this.playSound('offTrack');
+                
+                // Show visual feedback
+                if (this.ui) {
+                    this.ui.showOffTrackWarning();
+                }
+            }
+        }
+    }
+    
+    finishRace() {
+        if (!this.isGameRunning) return;
+        
+        console.log('Race finished!');
+        
+        // Stop game
+        this.isGameRunning = false;
+        this.isOver = true;
+        
+        // Play victory sound
+        this.playSound('victory');
+        
+        // Stop engine sound
+        this.stopMusic();
+        
+        // Show game over overlay with results
+        const results = {
+            finished: true,
+            time: this.gameTime,
+            laps: this.lapsCompleted,
+            bestLapTime: this.lapTime,
+            players: [
+                {
+                    name: 'You',
+                    isCurrentPlayer: true,
+                    totalTime: this.gameTime * 1000, // Convert to milliseconds
+                    bestLapTime: this.lapTime * 1000 // Convert to milliseconds
+                }
+                // Other players would be added here in multiplayer
+            ]
+        };
+        
+        this.ui.showGameOverOverlay(results);
+    }
+    
+    gameOver() {
+        if (!this.isGameRunning) return;
+        
+        console.log('Game over!');
+        
+        // Stop game
+        this.isGameRunning = false;
+        this.isOver = true;
+        
+        // Play game over sound
+        this.playSound('gameOver');
+        
+        // Stop engine sound
+        this.stopMusic();
+        
+        // Show game over overlay with results
+        const results = {
+            finished: false,
+            time: this.gameTime,
+            laps: this.lapsCompleted,
+            bestLapTime: this.lapTime,
+            players: [
+                {
+                    name: 'You',
+                    isCurrentPlayer: true,
+                    totalTime: this.gameTime * 1000, // Convert to milliseconds
+                    bestLapTime: this.lapTime * 1000 // Convert to milliseconds
+                }
+                // Other players would be added here in multiplayer
+            ]
+        };
+        
+        this.ui.showGameOverOverlay(results);
+    }
+
+    // Helper method to safely play sounds
+    playSound(soundName, volume) {
+        if (this.audioManager) {
+            try {
+                this.audioManager.playSound(soundName, volume);
+            } catch (error) {
+                console.warn(`Error playing sound '${soundName}':`, error);
+            }
+        }
+    }
+
+    // Helper method to safely play music
+    playMusic() {
+        if (this.audioManager) {
+            try {
+                this.audioManager.playMusic();
+            } catch (error) {
+                console.warn('Error playing music:', error);
+            }
+        }
+    }
+
+    // Helper method to safely stop music
+    stopMusic() {
+        if (this.audioManager) {
+            try {
+                this.audioManager.stopMusic();
+            } catch (error) {
+                console.warn('Error stopping music:', error);
+            }
         }
     }
 }

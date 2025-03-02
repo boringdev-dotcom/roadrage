@@ -66,86 +66,295 @@ class Bike {
     }
     
     createChassis() {
-        // Create bike chassis (simplified for this example)
-        const geometry = new THREE.BoxGeometry(0.8, 0.4, 2);
-        const material = new THREE.MeshPhongMaterial({ 
+        // Create bike chassis with more realistic geometry
+        const bikeGroup = new THREE.Group();
+        
+        // Main frame
+        const frameGeometry = new THREE.BoxGeometry(0.2, 0.1, 1.8);
+        const frameMaterial = new THREE.MeshPhongMaterial({ 
             color: this.getBikeColor(),
-            shininess: 50
+            shininess: 70
         });
+        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+        frame.position.y = 0.6;
+        frame.castShadow = true;
         
-        this.chassis = new THREE.Mesh(geometry, material);
-        this.chassis.position.y = 0.6;
-        this.chassis.castShadow = true;
-        this.chassis.receiveShadow = true;
+        // Fuel tank
+        const tankGeometry = new THREE.BoxGeometry(0.4, 0.25, 0.6);
+        const tankMaterial = new THREE.MeshPhongMaterial({ 
+            color: this.getBikeColor(),
+            shininess: 90
+        });
+        const tank = new THREE.Mesh(tankGeometry, tankMaterial);
+        tank.position.set(0, 0.75, -0.2);
+        tank.castShadow = true;
         
+        // Engine block
+        const engineGeometry = new THREE.BoxGeometry(0.5, 0.3, 0.4);
+        const engineMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x333333,
+            shininess: 60
+        });
+        const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+        engine.position.set(0, 0.5, 0);
+        engine.castShadow = true;
+        
+        // Seat
+        const seatGeometry = new THREE.BoxGeometry(0.3, 0.1, 0.7);
+        const seatMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111111,
+            shininess: 30
+        });
+        const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+        seat.position.set(0, 0.75, 0.4);
+        seat.castShadow = true;
+        
+        // Exhaust pipe
+        const exhaustGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.2);
+        const exhaustMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x999999,
+            shininess: 100
+        });
+        const exhaust = new THREE.Mesh(exhaustGeometry, exhaustMaterial);
+        exhaust.position.set(0.2, 0.4, 0.3);
+        exhaust.rotation.z = Math.PI / 2;
+        exhaust.castShadow = true;
+        
+        // Add all parts to the bike group
+        bikeGroup.add(frame);
+        bikeGroup.add(tank);
+        bikeGroup.add(engine);
+        bikeGroup.add(seat);
+        bikeGroup.add(exhaust);
+        
+        this.chassis = bikeGroup;
         this.object.add(this.chassis);
     }
     
     createWheels() {
-        // Create wheels
-        const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16);
+        // Create more detailed wheels
+        const wheelRadius = 0.4;
+        const wheelThickness = 0.1;
+        
+        // Wheel geometry and materials
+        const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelThickness, 24);
         const wheelMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x222222,
             shininess: 30
         });
         
-        // Front wheel
-        this.frontWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        const tireMaterial = new THREE.MeshPhongMaterial({
+            color: 0x111111,
+            shininess: 10
+        });
+        
+        // Front wheel with spokes
+        this.frontWheel = new THREE.Group();
+        
+        // Tire
+        const frontTire = new THREE.Mesh(wheelGeometry, tireMaterial);
+        frontTire.rotation.x = Math.PI / 2;
+        frontTire.castShadow = true;
+        
+        // Hub
+        const hubGeometry = new THREE.CylinderGeometry(0.1, 0.1, wheelThickness + 0.02, 16);
+        const hubMaterial = new THREE.MeshPhongMaterial({
+            color: 0x888888,
+            shininess: 80
+        });
+        const frontHub = new THREE.Mesh(hubGeometry, hubMaterial);
+        frontHub.rotation.x = Math.PI / 2;
+        
+        // Add spokes
+        const spokeCount = 8;
+        const spokeMaterial = new THREE.MeshBasicMaterial({ color: 0xCCCCCC });
+        
+        for (let i = 0; i < spokeCount; i++) {
+            const spokeGeometry = new THREE.BoxGeometry(0.02, 0.02, wheelRadius * 0.9);
+            const spoke = new THREE.Mesh(spokeGeometry, spokeMaterial);
+            spoke.rotation.z = (Math.PI * 2 / spokeCount) * i;
+            spoke.position.y = 0;
+            frontHub.add(spoke);
+        }
+        
+        this.frontWheel.add(frontTire);
+        this.frontWheel.add(frontHub);
         this.frontWheel.position.set(0, 0.4, -0.8);
-        this.frontWheel.rotation.x = Math.PI / 2;
-        this.frontWheel.castShadow = true;
-        this.frontWheel.receiveShadow = true;
         
-        // Rear wheel
-        this.rearWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+        // Rear wheel (similar to front)
+        this.rearWheel = new THREE.Group();
+        
+        // Tire
+        const rearTire = new THREE.Mesh(wheelGeometry, tireMaterial);
+        rearTire.rotation.x = Math.PI / 2;
+        rearTire.castShadow = true;
+        
+        // Hub
+        const rearHub = new THREE.Mesh(hubGeometry, hubMaterial);
+        rearHub.rotation.x = Math.PI / 2;
+        
+        // Add spokes
+        for (let i = 0; i < spokeCount; i++) {
+            const spokeGeometry = new THREE.BoxGeometry(0.02, 0.02, wheelRadius * 0.9);
+            const spoke = new THREE.Mesh(spokeGeometry, spokeMaterial);
+            spoke.rotation.z = (Math.PI * 2 / spokeCount) * i;
+            spoke.position.y = 0;
+            rearHub.add(spoke);
+        }
+        
+        this.rearWheel.add(rearTire);
+        this.rearWheel.add(rearHub);
         this.rearWheel.position.set(0, 0.4, 0.8);
-        this.rearWheel.rotation.x = Math.PI / 2;
-        this.rearWheel.castShadow = true;
-        this.rearWheel.receiveShadow = true;
         
+        // Add wheels to bike
         this.object.add(this.frontWheel);
         this.object.add(this.rearWheel);
     }
     
     createHandlebar() {
-        // Create handlebar
-        const handlebarGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 8);
-        const handlebarMaterial = new THREE.MeshPhongMaterial({ 
+        // Create more detailed handlebar
+        const handlebarGroup = new THREE.Group();
+        
+        // Main bar
+        const barGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.6);
+        const barMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x888888,
             shininess: 80
         });
+        const bar = new THREE.Mesh(barGeometry, barMaterial);
+        bar.rotation.z = Math.PI / 2;
         
-        this.handlebar = new THREE.Mesh(handlebarGeometry, handlebarMaterial);
-        this.handlebar.position.set(0, 0.8, -0.7);
-        this.handlebar.rotation.z = Math.PI / 2;
+        // Grips
+        const gripGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.15);
+        const gripMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x222222,
+            shininess: 20
+        });
         
+        const leftGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+        leftGrip.position.set(-0.35, 0, 0);
+        leftGrip.rotation.z = Math.PI / 2;
+        
+        const rightGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+        rightGrip.position.set(0.35, 0, 0);
+        rightGrip.rotation.z = Math.PI / 2;
+        
+        // Headlight
+        const headlightGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const headlightMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFFFFFF,
+            shininess: 100,
+            emissive: 0x888888
+        });
+        const headlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
+        headlight.position.set(0, 0, -0.1);
+        
+        // Add all parts to handlebar group
+        handlebarGroup.add(bar);
+        handlebarGroup.add(leftGrip);
+        handlebarGroup.add(rightGrip);
+        handlebarGroup.add(headlight);
+        
+        handlebarGroup.position.set(0, 0.9, -0.7);
+        
+        this.handlebar = handlebarGroup;
         this.object.add(this.handlebar);
     }
     
     createRider() {
-        // Create simplified rider
-        const bodyGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.8);
-        const headGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const riderMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x3366CC,
+        // Create a more realistic rider
+        const riderGroup = new THREE.Group();
+        
+        // Rider color based on bike type
+        const riderColor = this.getBikeColor() === 0xFF0000 ? 0x0000FF : 
+                           this.getBikeColor() === 0x0000FF ? 0xFF0000 : 
+                           0x00FF00;
+        
+        // Head
+        const headGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFFD700,  // Helmet color
+            shininess: 100
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.set(0, 1.5, 0.1);
+        head.castShadow = true;
+        
+        // Visor
+        const visorGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.1);
+        const visorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111111,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.7
+        });
+        const visor = new THREE.Mesh(visorGeometry, visorMaterial);
+        visor.position.set(0, 1.5, 0.2);
+        head.add(visor);
+        
+        // Torso
+        const torsoGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.2);
+        const torsoMaterial = new THREE.MeshPhongMaterial({ 
+            color: riderColor,
+            shininess: 30
+        });
+        const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+        torso.position.set(0, 1.2, 0.2);
+        torso.rotation.x = Math.PI / 6;  // Lean forward
+        torso.castShadow = true;
+        
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+        const armMaterial = new THREE.MeshPhongMaterial({ 
+            color: riderColor,
             shininess: 30
         });
         
-        // Body
-        const body = new THREE.Mesh(bodyGeometry, riderMaterial);
-        body.position.set(0, 1.1, 0);
-        body.castShadow = true;
+        // Left arm
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.25, 1.1, 0);
+        leftArm.rotation.z = -Math.PI / 6;
+        leftArm.rotation.x = Math.PI / 4;
+        leftArm.castShadow = true;
         
-        // Head
-        const head = new THREE.Mesh(headGeometry, riderMaterial);
-        head.position.set(0, 1.6, -0.2);
-        head.castShadow = true;
+        // Right arm
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.25, 1.1, 0);
+        rightArm.rotation.z = Math.PI / 6;
+        rightArm.rotation.x = Math.PI / 4;
+        rightArm.castShadow = true;
         
-        // Create rider group
-        this.rider = new THREE.Group();
-        this.rider.add(body);
-        this.rider.add(head);
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.15, 0.5, 0.15);
+        const legMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0a0a0a,  // Dark pants
+            shininess: 20
+        });
         
+        // Left leg
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.15, 0.8, 0.3);
+        leftLeg.rotation.x = Math.PI / 3;  // Bent knee
+        leftLeg.castShadow = true;
+        
+        // Right leg
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.15, 0.8, 0.3);
+        rightLeg.rotation.x = Math.PI / 3;  // Bent knee
+        rightLeg.castShadow = true;
+        
+        // Add all parts to rider group
+        riderGroup.add(head);
+        riderGroup.add(torso);
+        riderGroup.add(leftArm);
+        riderGroup.add(rightArm);
+        riderGroup.add(leftLeg);
+        riderGroup.add(rightLeg);
+        
+        // Position rider on bike
+        riderGroup.position.set(0, 0, 0);
+        
+        this.rider = riderGroup;
         this.object.add(this.rider);
     }
     
@@ -230,10 +439,37 @@ class Bike {
         
         // Tilt bike based on steering and speed
         this.object.rotation.z = -steering * 0.2 * (this.speed / this.bikeSpecs.maxSpeed);
+        
+        // Return bike data for other systems to use
+        return {
+            position: this.position,
+            rotation: this.rotation,
+            velocity: this.velocity,
+            speed: this.speed,
+            health: this.health
+        };
     }
     
     applyDamage(amount) {
+        // Rename to takeDamage for consistency
+        return this.takeDamage(amount);
+    }
+    
+    takeDamage(amount) {
+        // Reduce health by damage amount
         this.health = Math.max(0, this.health - amount);
+        
+        // Apply speed penalty based on damage
+        const speedPenalty = amount / 100; // 10 damage = 10% speed reduction
+        this.speed *= (1 - speedPenalty);
+        
+        // Apply visual damage effect to bike model if available
+        if (this.applyVisualDamage) {
+            this.applyVisualDamage(this.health);
+        }
+        
+        console.log(`Bike took ${amount} damage. Health: ${this.health}`);
+        
         return this.health;
     }
     
@@ -279,68 +515,307 @@ class OtherPlayerBike {
     }
     
     create() {
-        // Create bike object (simplified version of Bike.create)
+        // Create bike object
         this.object = new THREE.Group();
         
-        // Create bike chassis
-        const geometry = new THREE.BoxGeometry(0.8, 0.4, 2);
-        const material = new THREE.MeshPhongMaterial({ 
-            color: this.getBikeColor(),
-            shininess: 50
-        });
-        
-        this.chassis = new THREE.Mesh(geometry, material);
-        this.chassis.position.y = 0.6;
-        this.chassis.castShadow = true;
-        this.chassis.receiveShadow = true;
-        
-        // Create wheels
-        const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16);
-        const wheelMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x222222,
-            shininess: 30
-        });
-        
-        this.frontWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        this.frontWheel.position.set(0, 0.4, -0.8);
-        this.frontWheel.rotation.x = Math.PI / 2;
-        this.frontWheel.castShadow = true;
-        
-        this.rearWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        this.rearWheel.position.set(0, 0.4, 0.8);
-        this.rearWheel.rotation.x = Math.PI / 2;
-        this.rearWheel.castShadow = true;
-        
-        // Create simplified rider
-        const bodyGeometry = new THREE.BoxGeometry(0.4, 0.6, 0.8);
-        const headGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const riderMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xCC3366,  // Different color for other players
-            shininess: 30
-        });
-        
-        const body = new THREE.Mesh(bodyGeometry, riderMaterial);
-        body.position.set(0, 1.1, 0);
-        body.castShadow = true;
-        
-        const head = new THREE.Mesh(headGeometry, riderMaterial);
-        head.position.set(0, 1.6, -0.2);
-        head.castShadow = true;
-        
-        this.rider = new THREE.Group();
-        this.rider.add(body);
-        this.rider.add(head);
-        
-        // Add all parts to bike object
-        this.object.add(this.chassis);
-        this.object.add(this.frontWheel);
-        this.object.add(this.rearWheel);
-        this.object.add(this.rider);
+        // Create bike parts using the same methods as the main player
+        this.createChassis();
+        this.createWheels();
+        this.createHandlebar();
+        this.createRider();
         
         // Add bike to scene
         this.scene.add(this.object);
         
         return this.object;
+    }
+    
+    createChassis() {
+        // Create bike chassis with more realistic geometry
+        const bikeGroup = new THREE.Group();
+        
+        // Main frame
+        const frameGeometry = new THREE.BoxGeometry(0.2, 0.1, 1.8);
+        const frameMaterial = new THREE.MeshPhongMaterial({ 
+            color: this.getBikeColor(),
+            shininess: 70
+        });
+        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+        frame.position.y = 0.6;
+        frame.castShadow = true;
+        
+        // Fuel tank
+        const tankGeometry = new THREE.BoxGeometry(0.4, 0.25, 0.6);
+        const tankMaterial = new THREE.MeshPhongMaterial({ 
+            color: this.getBikeColor(),
+            shininess: 90
+        });
+        const tank = new THREE.Mesh(tankGeometry, tankMaterial);
+        tank.position.set(0, 0.75, -0.2);
+        tank.castShadow = true;
+        
+        // Engine block
+        const engineGeometry = new THREE.BoxGeometry(0.5, 0.3, 0.4);
+        const engineMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x333333,
+            shininess: 60
+        });
+        const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+        engine.position.set(0, 0.5, 0);
+        engine.castShadow = true;
+        
+        // Seat
+        const seatGeometry = new THREE.BoxGeometry(0.3, 0.1, 0.7);
+        const seatMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111111,
+            shininess: 30
+        });
+        const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+        seat.position.set(0, 0.75, 0.4);
+        seat.castShadow = true;
+        
+        // Exhaust pipe
+        const exhaustGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.2);
+        const exhaustMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x999999,
+            shininess: 100
+        });
+        const exhaust = new THREE.Mesh(exhaustGeometry, exhaustMaterial);
+        exhaust.position.set(0.2, 0.4, 0.3);
+        exhaust.rotation.z = Math.PI / 2;
+        exhaust.castShadow = true;
+        
+        // Add all parts to the bike group
+        bikeGroup.add(frame);
+        bikeGroup.add(tank);
+        bikeGroup.add(engine);
+        bikeGroup.add(seat);
+        bikeGroup.add(exhaust);
+        
+        this.chassis = bikeGroup;
+        this.object.add(this.chassis);
+    }
+    
+    createWheels() {
+        // Create more detailed wheels
+        const wheelRadius = 0.4;
+        const wheelThickness = 0.1;
+        
+        // Wheel geometry and materials
+        const wheelGeometry = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelThickness, 24);
+        const tireMaterial = new THREE.MeshPhongMaterial({
+            color: 0x111111,
+            shininess: 10
+        });
+        
+        // Front wheel with spokes
+        this.frontWheel = new THREE.Group();
+        
+        // Tire
+        const frontTire = new THREE.Mesh(wheelGeometry, tireMaterial);
+        frontTire.rotation.x = Math.PI / 2;
+        frontTire.castShadow = true;
+        
+        // Hub
+        const hubGeometry = new THREE.CylinderGeometry(0.1, 0.1, wheelThickness + 0.02, 16);
+        const hubMaterial = new THREE.MeshPhongMaterial({
+            color: 0x888888,
+            shininess: 80
+        });
+        const frontHub = new THREE.Mesh(hubGeometry, hubMaterial);
+        frontHub.rotation.x = Math.PI / 2;
+        
+        // Add spokes
+        const spokeCount = 8;
+        const spokeMaterial = new THREE.MeshBasicMaterial({ color: 0xCCCCCC });
+        
+        for (let i = 0; i < spokeCount; i++) {
+            const spokeGeometry = new THREE.BoxGeometry(0.02, 0.02, wheelRadius * 0.9);
+            const spoke = new THREE.Mesh(spokeGeometry, spokeMaterial);
+            spoke.rotation.z = (Math.PI * 2 / spokeCount) * i;
+            spoke.position.y = 0;
+            frontHub.add(spoke);
+        }
+        
+        this.frontWheel.add(frontTire);
+        this.frontWheel.add(frontHub);
+        this.frontWheel.position.set(0, 0.4, -0.8);
+        
+        // Rear wheel (similar to front)
+        this.rearWheel = new THREE.Group();
+        
+        // Tire
+        const rearTire = new THREE.Mesh(wheelGeometry, tireMaterial);
+        rearTire.rotation.x = Math.PI / 2;
+        rearTire.castShadow = true;
+        
+        // Hub
+        const rearHub = new THREE.Mesh(hubGeometry, hubMaterial);
+        rearHub.rotation.x = Math.PI / 2;
+        
+        // Add spokes
+        for (let i = 0; i < spokeCount; i++) {
+            const spokeGeometry = new THREE.BoxGeometry(0.02, 0.02, wheelRadius * 0.9);
+            const spoke = new THREE.Mesh(spokeGeometry, spokeMaterial);
+            spoke.rotation.z = (Math.PI * 2 / spokeCount) * i;
+            spoke.position.y = 0;
+            rearHub.add(spoke);
+        }
+        
+        this.rearWheel.add(rearTire);
+        this.rearWheel.add(rearHub);
+        this.rearWheel.position.set(0, 0.4, 0.8);
+        
+        // Add wheels to bike
+        this.object.add(this.frontWheel);
+        this.object.add(this.rearWheel);
+    }
+    
+    createHandlebar() {
+        // Create more detailed handlebar
+        const handlebarGroup = new THREE.Group();
+        
+        // Main bar
+        const barGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.6);
+        const barMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x888888,
+            shininess: 80
+        });
+        const bar = new THREE.Mesh(barGeometry, barMaterial);
+        bar.rotation.z = Math.PI / 2;
+        
+        // Grips
+        const gripGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.15);
+        const gripMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x222222,
+            shininess: 20
+        });
+        
+        const leftGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+        leftGrip.position.set(-0.35, 0, 0);
+        leftGrip.rotation.z = Math.PI / 2;
+        
+        const rightGrip = new THREE.Mesh(gripGeometry, gripMaterial);
+        rightGrip.position.set(0.35, 0, 0);
+        rightGrip.rotation.z = Math.PI / 2;
+        
+        // Headlight
+        const headlightGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const headlightMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFFFFFF,
+            shininess: 100,
+            emissive: 0x888888
+        });
+        const headlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
+        headlight.position.set(0, 0, -0.1);
+        
+        // Add all parts to handlebar group
+        handlebarGroup.add(bar);
+        handlebarGroup.add(leftGrip);
+        handlebarGroup.add(rightGrip);
+        handlebarGroup.add(headlight);
+        
+        handlebarGroup.position.set(0, 0.9, -0.7);
+        
+        this.handlebar = handlebarGroup;
+        this.object.add(this.handlebar);
+    }
+    
+    createRider() {
+        // Create a more realistic rider
+        const riderGroup = new THREE.Group();
+        
+        // Rider color based on bike type
+        const riderColor = this.getBikeColor() === 0xFF0000 ? 0x0000FF : 
+                           this.getBikeColor() === 0x0000FF ? 0xFF0000 : 
+                           0x00FF00;
+        
+        // Head
+        const headGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xFFD700,  // Helmet color
+            shininess: 100
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.set(0, 1.5, 0.1);
+        head.castShadow = true;
+        
+        // Visor
+        const visorGeometry = new THREE.BoxGeometry(0.2, 0.08, 0.1);
+        const visorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111111,
+            shininess: 100,
+            transparent: true,
+            opacity: 0.7
+        });
+        const visor = new THREE.Mesh(visorGeometry, visorMaterial);
+        visor.position.set(0, 1.5, 0.2);
+        head.add(visor);
+        
+        // Torso
+        const torsoGeometry = new THREE.BoxGeometry(0.4, 0.5, 0.2);
+        const torsoMaterial = new THREE.MeshPhongMaterial({ 
+            color: riderColor,
+            shininess: 30
+        });
+        const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
+        torso.position.set(0, 1.2, 0.2);
+        torso.rotation.x = Math.PI / 6;  // Lean forward
+        torso.castShadow = true;
+        
+        // Arms
+        const armGeometry = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+        const armMaterial = new THREE.MeshPhongMaterial({ 
+            color: riderColor,
+            shininess: 30
+        });
+        
+        // Left arm
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.25, 1.1, 0);
+        leftArm.rotation.z = -Math.PI / 6;
+        leftArm.rotation.x = Math.PI / 4;
+        leftArm.castShadow = true;
+        
+        // Right arm
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.25, 1.1, 0);
+        rightArm.rotation.z = Math.PI / 6;
+        rightArm.rotation.x = Math.PI / 4;
+        rightArm.castShadow = true;
+        
+        // Legs
+        const legGeometry = new THREE.BoxGeometry(0.15, 0.5, 0.15);
+        const legMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0a0a0a,  // Dark pants
+            shininess: 20
+        });
+        
+        // Left leg
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.15, 0.8, 0.3);
+        leftLeg.rotation.x = Math.PI / 3;  // Bent knee
+        leftLeg.castShadow = true;
+        
+        // Right leg
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.15, 0.8, 0.3);
+        rightLeg.rotation.x = Math.PI / 3;  // Bent knee
+        rightLeg.castShadow = true;
+        
+        // Add all parts to rider group
+        riderGroup.add(head);
+        riderGroup.add(torso);
+        riderGroup.add(leftArm);
+        riderGroup.add(rightArm);
+        riderGroup.add(leftLeg);
+        riderGroup.add(rightLeg);
+        
+        // Position rider on bike
+        riderGroup.position.set(0, 0, 0);
+        
+        this.rider = riderGroup;
+        this.object.add(this.rider);
     }
     
     getBikeColor() {

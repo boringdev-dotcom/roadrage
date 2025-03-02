@@ -17,6 +17,9 @@ class GameUI {
         this.chatContainer = null;
         this.controlsOverlay = null;
         this.pauseMenu = null;
+        this.boundaryWarning = null;
+        this.damageEffect = null;
+        this.slipEffect = null;
         
         // UI state
         this.isLoading = true;
@@ -24,6 +27,9 @@ class GameUI {
         this.isGameOver = false;
         this.showingControls = false;
         this.showingChat = false;
+        this.boundaryWarningTimeout = null;
+        this.damageEffectTimeout = null;
+        this.slipEffectTimeout = null;
         
         // Bind methods
         this.init = this.init.bind(this);
@@ -52,6 +58,13 @@ class GameUI {
         this.addChatMessage = this.addChatMessage.bind(this);
         this.showDamageIndicator = this.showDamageIndicator.bind(this);
         this.showNotification = this.showNotification.bind(this);
+        this.showBoundaryWarning = this.showBoundaryWarning.bind(this);
+        this.showDamageEffect = this.showDamageEffect.bind(this);
+        this.showSlipEffect = this.showSlipEffect.bind(this);
+        this.updateCheckpoint = this.updateCheckpoint.bind(this);
+        this.updateLap = this.updateLap.bind(this);
+        this.updateLapTime = this.updateLapTime.bind(this);
+        this.updateHealth = this.updateHealth.bind(this);
     }
     
     init() {
@@ -83,6 +96,68 @@ class GameUI {
             this.chatContainer = document.getElementById('chat-container');
             this.controlsOverlay = document.getElementById('controls-overlay');
             this.pauseMenu = document.getElementById('pause-menu');
+            
+            // Create boundary warning element if it doesn't exist
+            if (!document.getElementById('boundary-warning')) {
+                const boundaryWarning = document.createElement('div');
+                boundaryWarning.id = 'boundary-warning';
+                boundaryWarning.className = 'warning-overlay';
+                boundaryWarning.innerHTML = '<div class="warning-message">TRACK BOUNDARY</div>';
+                boundaryWarning.style.display = 'none';
+                boundaryWarning.style.position = 'absolute';
+                boundaryWarning.style.top = '0';
+                boundaryWarning.style.left = '0';
+                boundaryWarning.style.width = '100%';
+                boundaryWarning.style.height = '100%';
+                boundaryWarning.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+                boundaryWarning.style.color = 'white';
+                boundaryWarning.style.display = 'flex';
+                boundaryWarning.style.justifyContent = 'center';
+                boundaryWarning.style.alignItems = 'center';
+                boundaryWarning.style.fontSize = '2em';
+                boundaryWarning.style.fontWeight = 'bold';
+                boundaryWarning.style.zIndex = '1000';
+                boundaryWarning.style.pointerEvents = 'none';
+                document.body.appendChild(boundaryWarning);
+            }
+            
+            // Create damage effect element if it doesn't exist
+            if (!document.getElementById('damage-effect')) {
+                const damageEffect = document.createElement('div');
+                damageEffect.id = 'damage-effect';
+                damageEffect.className = 'effect-overlay';
+                damageEffect.style.display = 'none';
+                damageEffect.style.position = 'absolute';
+                damageEffect.style.top = '0';
+                damageEffect.style.left = '0';
+                damageEffect.style.width = '100%';
+                damageEffect.style.height = '100%';
+                damageEffect.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                damageEffect.style.zIndex = '999';
+                damageEffect.style.pointerEvents = 'none';
+                document.body.appendChild(damageEffect);
+            }
+            
+            // Create slip effect element if it doesn't exist
+            if (!document.getElementById('slip-effect')) {
+                const slipEffect = document.createElement('div');
+                slipEffect.id = 'slip-effect';
+                slipEffect.className = 'effect-overlay';
+                slipEffect.style.display = 'none';
+                slipEffect.style.position = 'absolute';
+                slipEffect.style.top = '0';
+                slipEffect.style.left = '0';
+                slipEffect.style.width = '100%';
+                slipEffect.style.height = '100%';
+                slipEffect.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                slipEffect.style.zIndex = '999';
+                slipEffect.style.pointerEvents = 'none';
+                document.body.appendChild(slipEffect);
+            }
+            
+            this.boundaryWarning = document.getElementById('boundary-warning');
+            this.damageEffect = document.getElementById('damage-effect');
+            this.slipEffect = document.getElementById('slip-effect');
             
             // Log any missing elements
             const elements = {
@@ -556,6 +631,142 @@ class GameUI {
             }, duration);
         } catch (error) {
             console.error('Error showing notification:', error);
+        }
+    }
+    
+    showBoundaryWarning() {
+        if (this.boundaryWarning) {
+            this.boundaryWarning.style.display = 'flex';
+            
+            // Clear existing timeout if there is one
+            if (this.boundaryWarningTimeout) {
+                clearTimeout(this.boundaryWarningTimeout);
+            }
+            
+            // Hide warning after 1 second
+            this.boundaryWarningTimeout = setTimeout(() => {
+                this.boundaryWarning.style.display = 'none';
+            }, 1000);
+        }
+    }
+    
+    showDamageEffect() {
+        if (this.damageEffect) {
+            this.damageEffect.style.display = 'block';
+            
+            // Clear existing timeout if there is one
+            if (this.damageEffectTimeout) {
+                clearTimeout(this.damageEffectTimeout);
+            }
+            
+            // Hide effect after 500ms
+            this.damageEffectTimeout = setTimeout(() => {
+                this.damageEffect.style.display = 'none';
+            }, 500);
+        }
+    }
+    
+    showSlipEffect() {
+        if (this.slipEffect) {
+            this.slipEffect.style.display = 'block';
+            
+            // Clear existing timeout if there is one
+            if (this.slipEffectTimeout) {
+                clearTimeout(this.slipEffectTimeout);
+            }
+            
+            // Hide effect after 2 seconds
+            this.slipEffectTimeout = setTimeout(() => {
+                this.slipEffect.style.display = 'none';
+            }, 2000);
+        }
+    }
+    
+    updateCheckpoint(currentCheckpoint, totalCheckpoints) {
+        if (this.positionDisplay) {
+            this.positionDisplay.textContent = `${currentCheckpoint}/${totalCheckpoints}`;
+        }
+    }
+    
+    updateLap(currentLap, totalLaps) {
+        if (this.lapCounter) {
+            this.lapCounter.textContent = `${currentLap}/${totalLaps}`;
+        }
+    }
+    
+    updateLapTime(lapTime) {
+        // Show lap time notification
+        this.showNotification(`Lap Time: ${this.formatTime(lapTime)}`, 3000);
+    }
+    
+    updateHealth(health) {
+        if (this.healthBar) {
+            const healthPercent = Math.max(0, Math.min(100, health));
+            this.healthBar.style.width = `${healthPercent}%`;
+            
+            // Change color based on health
+            if (healthPercent > 60) {
+                this.healthBar.style.backgroundColor = '#4CAF50'; // Green
+            } else if (healthPercent > 30) {
+                this.healthBar.style.backgroundColor = '#FFC107'; // Yellow
+            } else {
+                this.healthBar.style.backgroundColor = '#F44336'; // Red
+            }
+        }
+    }
+    
+    // Add update method to handle UI updates each frame
+    update(deltaTime) {
+        // Update game timer if we have a game start time
+        if (this.gameStartTime) {
+            const currentTime = performance.now();
+            const elapsedTime = currentTime - this.gameStartTime;
+            this.updateTimer(elapsedTime);
+        }
+        
+        // Update any animations or effects
+        this.updateEffects(deltaTime);
+    }
+    
+    updateEffects(deltaTime) {
+        // Update any visual effects or animations here
+        // This is a placeholder for future effects
+    }
+    
+    updateHealth(health) {
+        this.updateHealthBar(health);
+    }
+    
+    updateGameTime(gameTime) {
+        this.updateTimer(gameTime * 1000); // Convert to milliseconds
+    }
+    
+    setGameStartTime() {
+        this.gameStartTime = performance.now();
+    }
+    
+    showOffTrackWarning() {
+        // Clear any existing timeout
+        if (this.boundaryWarningTimeout) {
+            clearTimeout(this.boundaryWarningTimeout);
+        }
+        
+        // Show warning
+        if (this.boundaryWarning) {
+            this.boundaryWarning.style.display = 'flex';
+            
+            // Hide after 2 seconds
+            this.boundaryWarningTimeout = setTimeout(() => {
+                this.boundaryWarning.style.display = 'none';
+            }, 2000);
+        }
+    }
+    
+    updateLapTime(lapTime) {
+        // Update lap time display
+        const lapTimeElement = document.querySelector('#lap-time .time-value');
+        if (lapTimeElement) {
+            lapTimeElement.textContent = this.formatTime(lapTime * 1000); // Convert to milliseconds
         }
     }
 } 

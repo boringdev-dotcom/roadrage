@@ -449,42 +449,88 @@ class Track {
     }
     
     isPointOnRoad(x, z, buffer = 10) {
-        // Check if a point is on the road (with buffer)
+        // Get the track path points
         const checkpoints = this.trackSpec.checkpoints;
-        const roadWidth = this.trackSpec.width + buffer;
+        const numCheckpoints = checkpoints.length;
         
-        for (let i = 0; i < checkpoints.length; i++) {
+        // Check if the point is near any road segment
+        for (let i = 0; i < numCheckpoints; i++) {
             const start = checkpoints[i].position;
-            const end = checkpoints[(i + 1) % checkpoints.length].position;
+            const end = checkpoints[(i + 1) % numCheckpoints].position;
             
-            // Calculate road segment
-            const dx = end.x - start.x;
-            const dz = end.z - start.z;
-            const length = Math.sqrt(dx * dx + dz * dz);
+            // Calculate distance from point to line segment
+            const distance = this.distanceToLineSegment(
+                { x, z },
+                { x: start.x, z: start.z },
+                { x: end.x, z: end.z }
+            );
             
-            // Calculate normalized direction
-            const dirX = dx / length;
-            const dirZ = dz / length;
-            
-            // Calculate perpendicular direction
-            const perpX = -dirZ;
-            const perpZ = dirX;
-            
-            // Calculate vector from start to point
-            const vx = x - start.x;
-            const vz = z - start.z;
-            
-            // Calculate dot products
-            const dotAlongRoad = vx * dirX + vz * dirZ;
-            const dotPerpRoad = vx * perpX + vz * perpZ;
-            
-            // Check if point is on road segment
-            if (dotAlongRoad >= 0 && dotAlongRoad <= length && Math.abs(dotPerpRoad) <= roadWidth / 2) {
+            // If distance is less than road width + buffer, point is on road
+            if (distance <= (this.trackSpec.width / 2) + buffer) {
                 return true;
             }
         }
         
         return false;
+    }
+    
+    // Add a new method to calculate distance from point to line segment
+    distanceToLineSegment(point, lineStart, lineEnd) {
+        const dx = lineEnd.x - lineStart.x;
+        const dz = lineEnd.z - lineStart.z;
+        
+        // If line segment is just a point, return distance to that point
+        if (dx === 0 && dz === 0) {
+            return Math.sqrt(
+                Math.pow(point.x - lineStart.x, 2) + 
+                Math.pow(point.z - lineStart.z, 2)
+            );
+        }
+        
+        // Calculate projection of point onto line
+        const t = ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / 
+                  (dx * dx + dz * dz);
+        
+        // If projection is outside line segment, return distance to nearest endpoint
+        if (t < 0) {
+            return Math.sqrt(
+                Math.pow(point.x - lineStart.x, 2) + 
+                Math.pow(point.z - lineStart.z, 2)
+            );
+        }
+        if (t > 1) {
+            return Math.sqrt(
+                Math.pow(point.x - lineEnd.x, 2) + 
+                Math.pow(point.z - lineEnd.z, 2)
+            );
+        }
+        
+        // Calculate closest point on line segment
+        const closestX = lineStart.x + t * dx;
+        const closestZ = lineStart.z + t * dz;
+        
+        // Return distance to closest point
+        return Math.sqrt(
+            Math.pow(point.x - closestX, 2) + 
+            Math.pow(point.z - closestZ, 2)
+        );
+    }
+    
+    // Add a new method to check if a position is within track boundaries
+    isWithinTrackBoundaries(position) {
+        // Get track bounds
+        const bounds = this.getTrackBounds();
+        
+        // Add a buffer zone around the track (50 meters)
+        const buffer = 50;
+        
+        // Check if position is within bounds with buffer
+        return (
+            position.x >= bounds.minX - buffer &&
+            position.x <= bounds.maxX + buffer &&
+            position.z >= bounds.minZ - buffer &&
+            position.z <= bounds.maxZ + buffer
+        );
     }
     
     checkCheckpoints(position) {
@@ -499,19 +545,49 @@ class Track {
         // Checkpoint threshold
         const checkpointThreshold = 10.0;
         
+        // Default result object
+        const result = {
+            checkpointPassed: false,
+            currentCheckpoint: this.currentCheckpoint,
+            totalCheckpoints: this.trackSpec.checkpoints.length,
+            lapCompleted: false,
+            raceFinished: false,
+            lapTime: 0
+        };
+        
         if (distance < checkpointThreshold) {
             // Passed checkpoint
+            const oldCheckpoint = this.currentCheckpoint;
             this.currentCheckpoint = (this.currentCheckpoint + 1) % this.trackSpec.checkpoints.length;
+            
+            // Update result
+            result.checkpointPassed = true;
+            result.currentCheckpoint = this.currentCheckpoint;
             
             // Check if completed a lap
             if (this.currentCheckpoint === 0) {
-                this.completeLap();
+                const lapResult = this.completeLap();
+                result.lapCompleted = true;
+                result.lapTime = lapResult.lapTime;
+                result.bestLapTime = lapResult.bestLapTime;
+                
+                // Check if race is finished
+                if (this.lap > this.totalLaps) {
+                    result.raceFinished = true;
+                }
             }
             
-            return true;
+            // Highlight next checkpoint marker
+            if (this.checkpointMarkers.length > 0) {
+                // Reset previous checkpoint color
+                this.checkpointMarkers[oldCheckpoint].material.opacity = 0.3;
+                
+                // Highlight current checkpoint
+                this.checkpointMarkers[this.currentCheckpoint].material.opacity = 0.6;
+            }
         }
         
-        return false;
+        return result;
     }
     
     completeLap() {
@@ -620,5 +696,71 @@ class Track {
     
     getRaceTime() {
         return performance.now() - this.raceStartTime;
+    }
+    
+    getNearestPointOnTrack(position) {
+        if (!this.trackSpec || !this.trackSpec.checkpoints || this.trackSpec.checkpoints.length < 2) {
+            console.error('Track checkpoints not properly defined');
+            return null;
+        }
+        
+        let nearestPoint = null;
+        let minDistance = Infinity;
+        
+        // Check distance to each track segment (between checkpoints)
+        for (let i = 0; i < this.trackSpec.checkpoints.length; i++) {
+            const checkpoint1 = this.trackSpec.checkpoints[i];
+            const checkpoint2 = this.trackSpec.checkpoints[(i + 1) % this.trackSpec.checkpoints.length];
+            
+            // Calculate nearest point on line segment between checkpoints
+            const point = this.getNearestPointOnSegment(
+                position,
+                { x: checkpoint1.position.x, z: checkpoint1.position.z },
+                { x: checkpoint2.position.x, z: checkpoint2.position.z }
+            );
+            
+            // Calculate distance to this point
+            const dx = position.x - point.x;
+            const dz = position.z - point.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            // Update nearest point if this is closer
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPoint = point;
+            }
+        }
+        
+        return nearestPoint;
+    }
+    
+    getNearestPointOnSegment(position, segmentStart, segmentEnd) {
+        // Calculate direction vector of segment
+        const segmentDirX = segmentEnd.x - segmentStart.x;
+        const segmentDirZ = segmentEnd.z - segmentStart.z;
+        
+        // Calculate squared length of segment
+        const segmentLengthSquared = segmentDirX * segmentDirX + segmentDirZ * segmentDirZ;
+        
+        if (segmentLengthSquared === 0) {
+            // Segment is a point, return start point
+            return { x: segmentStart.x, z: segmentStart.z };
+        }
+        
+        // Calculate projection of position onto segment
+        const posRelativeX = position.x - segmentStart.x;
+        const posRelativeZ = position.z - segmentStart.z;
+        
+        // Calculate dot product
+        const dotProduct = posRelativeX * segmentDirX + posRelativeZ * segmentDirZ;
+        
+        // Calculate normalized projection (t parameter)
+        const t = Math.max(0, Math.min(1, dotProduct / segmentLengthSquared));
+        
+        // Calculate nearest point on segment
+        return {
+            x: segmentStart.x + t * segmentDirX,
+            z: segmentStart.z + t * segmentDirZ
+        };
     }
 } 
