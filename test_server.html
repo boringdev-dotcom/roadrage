@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Test</title>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusElement = document.getElementById('status');
+            const messageElement = document.getElementById('message');
+            
+            try {
+                statusElement.textContent = 'Connecting to server...';
+                
+                // Try to connect to the server
+                const socket = io('http://localhost:5002');
+                
+                socket.on('connect', function() {
+                    statusElement.textContent = 'Connected to server!';
+                    messageElement.textContent = 'Socket ID: ' + socket.id;
+                });
+                
+                socket.on('connect_error', function(error) {
+                    statusElement.textContent = 'Connection error!';
+                    messageElement.textContent = 'Error: ' + error.message;
+                });
+                
+                socket.on('disconnect', function() {
+                    statusElement.textContent = 'Disconnected from server!';
+                    messageElement.textContent = '';
+                });
+            } catch (error) {
+                statusElement.textContent = 'Error initializing connection!';
+                messageElement.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Server Test</h1>
+    <p>Status: <span id="status">Initializing...</span></p>
+    <p id="message"></p>
+</body>
+</html> 

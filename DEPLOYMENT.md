@@ -1,194 +1,117 @@
-# RoadRage Multiplayer Deployment Guide
+# Deployment Guide for RoadRage Game
 
-This guide will help you deploy the RoadRage multiplayer server so you can play with friends in different countries.
+This guide provides instructions for deploying the RoadRage game to various platforms.
+
+## Prerequisites
+
+- Python 3.7 or higher
+- Node.js (if using a Node.js-based hosting service)
+- Git
+
+## Local Development
+
+1. Clone the repository:
+   ```
+   git clone <repository-url>
+   cd roadrage
+   ```
+
+2. Install Python dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+3. Run the server:
+   ```
+   cd server
+   python app.py
+   ```
+
+4. Open a web browser and navigate to `http://localhost:5002` to play the game.
 
 ## Deployment Options
 
-There are several cloud platforms where you can deploy your RoadRage server:
+### Option 1: Deploying to Heroku
 
-1. **Heroku** - Easy to use, has a free tier with limitations
-2. **Render** - Simple deployment, generous free tier
-3. **Railway** - Developer-friendly, good free tier
-4. **DigitalOcean** - More control, requires more setup, paid service
-5. **AWS** - Most flexible, complex setup, free tier available
-
-## Preparing Your Code
-
-Before deploying, make sure your code is ready:
-
-1. The server code has been updated to use environment variables for port and host
-2. A Procfile has been created for Heroku deployment
-3. The client code has been updated to connect to your deployed server
-
-## Deployment Instructions
-
-### Option 1: Heroku Deployment
-
-1. **Create a Heroku account**
-   - Sign up at [heroku.com](https://www.heroku.com/)
-
-2. **Install the Heroku CLI**
-   - Download from [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
-   - Verify installation: `heroku --version`
-
-3. **Login to Heroku**
+1. Create a Heroku account if you don't have one.
+2. Install the Heroku CLI.
+3. Login to Heroku:
    ```
    heroku login
    ```
 
-4. **Create a new Heroku app**
+4. Create a new Heroku app:
    ```
-   heroku create your-roadrage-app-name
-   ```
-
-5. **Push your code to Heroku**
-   ```
-   git push heroku master
+   heroku create your-roadrage-app
    ```
 
-6. **Open your deployed app**
+5. Add a Procfile to the root of your project:
+   ```
+   web: cd server && python app.py
+   ```
+
+6. Set environment variables:
+   ```
+   heroku config:set PORT=5000
+   ```
+
+7. Deploy to Heroku:
+   ```
+   git push heroku main
+   ```
+
+8. Open the app:
    ```
    heroku open
    ```
 
-7. **Configure your client**
-   - Update `static/js/config.js` with your Heroku app URL:
-   ```javascript
-   SERVER: {
-       URL: "https://your-roadrage-app-name.herokuapp.com",
-       OFFLINE_MODE: false
-   }
-   ```
+### Option 2: Deploying to Render
 
-### Option 2: Render Deployment
+1. Create a Render account if you don't have one.
+2. Create a new Web Service.
+3. Connect your GitHub repository.
+4. Configure the service:
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `cd server && python app.py`
+   - Environment Variables: `PORT=10000`
 
-1. **Create a Render account**
-   - Sign up at [render.com](https://render.com/)
+5. Click "Create Web Service".
 
-2. **Create a new Web Service**
-   - Connect your GitHub repository
-   - Select the branch to deploy
-   - Set the build command: `pip install -r requirements.txt`
-   - Set the start command: `python server/app.py`
+### Option 3: Deploying to Railway
 
-3. **Configure environment variables**
-   - Add `PORT` with value `10000` (or any port Render supports)
-   - Add `SECRET_KEY` with a secure random string
+1. Create a Railway account if you don't have one.
+2. Create a new project.
+3. Connect your GitHub repository.
+4. Add a service and select your repository.
+5. Configure the service:
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `cd server && python app.py`
+   - Environment Variables: `PORT=5000`
 
-4. **Deploy your application**
-   - Click "Create Web Service"
-
-5. **Configure your client**
-   - Update `static/js/config.js` with your Render app URL:
-   ```javascript
-   SERVER: {
-       URL: "https://your-roadrage.onrender.com",
-       OFFLINE_MODE: false
-   }
-   ```
-
-### Option 3: Railway Deployment
-
-1. **Create a Railway account**
-   - Sign up at [railway.app](https://railway.app/)
-
-2. **Create a new project**
-   - Connect your GitHub repository
-   - Railway will automatically detect your Python app
-
-3. **Configure environment variables**
-   - Add `SECRET_KEY` with a secure random string
-
-4. **Deploy your application**
-   - Railway will automatically deploy your app
-
-5. **Configure your client**
-   - Update `static/js/config.js` with your Railway app URL:
-   ```javascript
-   SERVER: {
-       URL: "https://your-roadrage.up.railway.app",
-       OFFLINE_MODE: false
-   }
-   ```
-
-## Testing Your Deployment
-
-1. **Verify the server is running**
-   - Open your deployed URL in a browser
-   - You should see the RoadRage game menu
-
-2. **Test multiplayer functionality**
-   - Open the game in two different browsers or devices
-   - Create a room in one and join from the other
-   - Verify that players can see each other
+6. Deploy the service.
 
 ## Troubleshooting
 
-### Common Issues
+### Connection Refused Errors
 
-1. **Connection errors**
-   - Check browser console for errors
-   - Verify your server URL is correct
-   - Ensure CORS is properly configured
+If you see `ERR_CONNECTION_REFUSED` errors in the browser console:
 
-2. **Server crashes**
-   - Check server logs in your deployment platform
-   - Look for error messages or exceptions
-   
-3. **Server won't start with `allow_unsafe_werkzeug` error**
-   - This parameter is only compatible with newer versions of Flask-SocketIO
-   - Remove this parameter from the `socketio.run()` call in `server/app.py`
-   - If deploying to a platform that requires this parameter, update your dependencies:
-     ```
-     pip install --upgrade flask-socketio werkzeug
-     ```
+1. Check if the server is running.
+2. Verify that the client is connecting to the correct URL.
+3. Check if there are any firewall or network issues.
+4. Ensure that the `PORT` environment variable is set correctly.
 
-4. **Players can't see each other**
-   - Verify Socket.IO connections are established
-   - Check room joining functionality
+### Socket.IO Connection Issues
 
-### Getting Help
+If Socket.IO is not connecting:
 
-If you encounter issues, check:
-- The deployment platform's documentation
-- Socket.IO documentation
-- Flask documentation
-- GitHub issues for similar problems
+1. Check the browser console for errors.
+2. Verify that the Socket.IO version in the client matches the server.
+3. Ensure CORS is properly configured on the server.
+4. Check if the server is behind a proxy or load balancer that might be affecting WebSocket connections.
 
-## Updating Your Deployment
+## Important Notes
 
-When you make changes to your code:
-
-1. **Commit your changes**
-   ```
-   git add .
-   git commit -m "Description of changes"
-   ```
-
-2. **Push to your deployment platform**
-   - For Heroku: `git push heroku master`
-   - For Render/Railway: Push to your GitHub repository, and they will automatically redeploy
-
-## Security Considerations
-
-1. **Use environment variables for sensitive information**
-   - Never hardcode API keys, secrets, or passwords
-
-2. **Set a strong SECRET_KEY**
-   - This is used for session security
-
-3. **Implement rate limiting**
-   - Prevent abuse of your server resources
-
-4. **Consider adding authentication**
-   - For more serious deployments, add user accounts
-
-## Cost Considerations
-
-Most platforms offer free tiers with limitations:
-
-- **Heroku**: Free tier apps sleep after 30 minutes of inactivity
-- **Render**: Free tier has limited hours per month
-- **Railway**: Free tier has usage limits
-
-For reliable 24/7 hosting, consider paid tiers or dedicated servers. 
+- When deploying, make sure the `static/js/config.js` file is properly configured.
+- The default configuration uses the same origin for the Socket.IO connection when deployed.
+- If you're deploying the client and server separately, you'll need to update the `CONFIG.SERVER.URL` in `static/js/config.js`. 

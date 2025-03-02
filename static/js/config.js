@@ -12,7 +12,7 @@ const CONFIG = {
         URL: null,
         
         // Default port for local development
-        PORT: 5001,
+        PORT: 5002,
         
         // Whether to use offline mode (no server connection)
         OFFLINE_MODE: false
@@ -37,8 +37,18 @@ function getSocketURL() {
         return CONFIG.SERVER.URL;
     }
     
-    // Use localhost with the specified port for local development
-    return `http://localhost:${CONFIG.SERVER.PORT}`;
+    // Check if we're running on a deployed server or locally
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1';
+    
+    if (isLocalhost) {
+        // Use localhost with the specified port for local development
+        return `http://localhost:${CONFIG.SERVER.PORT}`;
+    } else {
+        // When deployed, use the same host as the page
+        // This assumes the server and client are deployed together
+        return window.location.origin;
+    }
 }
 
 // Export configuration
