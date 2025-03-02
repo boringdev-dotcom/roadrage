@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage - Multiplayer Bike Racing Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        h1 span {
+            color: #ff4d4d;
+        }
+        
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+        
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .button:hover {
+            background-color: #ff3333;
+        }
+        
+        .button.secondary {
+            background-color: #333;
+        }
+        
+        .button.secondary:hover {
+            background-color: #444;
+        }
+        
+        .footer {
+            margin-top: 50px;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ROAD<span>RAGE</span></h1>
+        <p>A multiplayer bike racing game inspired by Road Rash</p>
+        
+        <div class="buttons">
+            <a href="test-game.html" class="button">Play Game (Offline Mode)</a>
+            <a href="templates/index.html" class="button secondary">Main Menu</a>
+        </div>
+        
+        <div class="footer">
+            <p>Note: The offline mode allows you to play without a server connection.</p>
+            <p>Use W/A/S/D or arrow keys to control the bike. Space to jump. E to punch. Q to kick.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Redirect to test-game.html after a short delay
+        setTimeout(function() {
+            window.location.href = "test-game.html";
+        }, 3000);
+    </script>
+</body>
+</html> 
