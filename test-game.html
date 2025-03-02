@@ -162,38 +162,33 @@
     
     <!-- Try to load real Socket.IO -->
     <script>
-        // Check if Socket.IO is available
-        function loadSocketIO() {
-            return new Promise((resolve, reject) => {
-                if (typeof io !== 'undefined') {
-                    console.log('Socket.IO is already loaded');
-                    resolve(true);
-                    return;
-                }
-                
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js';
-                script.onload = () => {
-                    console.log('Socket.IO loaded successfully');
-                    resolve(true);
-                };
-                script.onerror = () => {
-                    console.warn('Failed to load Socket.IO, using mock implementation');
-                    document.getElementById('offline-mode-indicator').style.display = 'block';
-                    resolve(false);
-                };
-                document.head.appendChild(script);
-            });
-        }
+        // Load configuration
+        document.write('<script src="static/js/config.js"><\/script>');
         
-        // Load Socket.IO before loading game scripts
-        loadSocketIO().then(() => {
-            // Now load game scripts
-            loadGameScripts();
+        // Check for offline mode parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const offlineMode = urlParams.get('offline') === 'true';
+        
+        // Update configuration
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof CONFIG !== 'undefined') {
+                CONFIG.SERVER.OFFLINE_MODE = offlineMode;
+                console.log(`Game running in ${offlineMode ? 'OFFLINE' : 'ONLINE'} mode`);
+            }
         });
         
-        function loadGameScripts() {
+        // Loading screen elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingBar = document.getElementById('loading-bar');
+        
+        // Load game scripts
+        window.addEventListener('load', function() {
+            loadScripts();
+        });
+        
+        function loadScripts() {
             const scripts = [
+                'static/js/lib/three.min.js',
                 'static/js/game/utils.js',
                 'static/js/game/ui.js',
                 'static/js/game/controls.js',

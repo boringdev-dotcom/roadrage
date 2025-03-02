@@ -55,7 +55,15 @@ class GameNetwork {
     
     connect() {
         // Connect to Socket.IO server
-        this.socket = io();
+        const serverUrl = window.getSocketURL ? window.getSocketURL() : null;
+        
+        if (serverUrl) {
+            console.log(`Connecting to server at: ${serverUrl}`);
+            this.socket = io(serverUrl);
+        } else {
+            console.log('Connecting to server at current domain');
+            this.socket = io();
+        }
         
         // Setup connection events
         this.socket.on('connect', () => {

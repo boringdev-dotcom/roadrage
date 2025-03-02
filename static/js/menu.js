@@ -1,7 +1,16 @@
 // Menu JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Socket.io connection
-    const socket = io();
+    const serverUrl = window.getSocketURL ? window.getSocketURL() : null;
+    let socket;
+    
+    if (serverUrl) {
+        console.log(`Connecting to server at: ${serverUrl}`);
+        socket = io(serverUrl);
+    } else {
+        console.log('Connecting to server at current domain');
+        socket = io();
+    }
     
     // DOM Elements
     const playPublicBtn = document.getElementById('play-public');
