@@ -6,7 +6,7 @@ A multiplayer bike racing game inspired by Road Rash, built with Python, Three.j
 
 You can play the game directly in your browser without installation:
 
-**[Play RoadRage Online](https://boringdev-dotcom.github.io/roadrage/)**
+**[Play RoadRage Online](https://roadrage.onrender.com/)**
 
 The online version runs in offline mode, which means you can play without a server connection, but multiplayer features will be simulated.
 
