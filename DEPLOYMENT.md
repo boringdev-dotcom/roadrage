@@ -134,8 +134,16 @@ Before deploying, make sure your code is ready:
 2. **Server crashes**
    - Check server logs in your deployment platform
    - Look for error messages or exceptions
+   
+3. **Server won't start with `allow_unsafe_werkzeug` error**
+   - This parameter is only compatible with newer versions of Flask-SocketIO
+   - Remove this parameter from the `socketio.run()` call in `server/app.py`
+   - If deploying to a platform that requires this parameter, update your dependencies:
+     ```
+     pip install --upgrade flask-socketio werkzeug
+     ```
 
-3. **Players can't see each other**
+4. **Players can't see each other**
    - Verify Socket.IO connections are established
    - Check room joining functionality
 

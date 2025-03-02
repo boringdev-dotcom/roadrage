@@ -11,6 +11,9 @@ const CONFIG = {
         // - Railway: "https://your-roadrage.up.railway.app"
         URL: null,
         
+        // Default port for local development
+        PORT: 5001,
+        
         // Whether to use offline mode (no server connection)
         OFFLINE_MODE: false
     },
@@ -30,7 +33,12 @@ function getSocketURL() {
         return null;
     }
     
-    return CONFIG.SERVER.URL;
+    if (CONFIG.SERVER.URL) {
+        return CONFIG.SERVER.URL;
+    }
+    
+    // Use localhost with the specified port for local development
+    return `http://localhost:${CONFIG.SERVER.PORT}`;
 }
 
 // Export configuration

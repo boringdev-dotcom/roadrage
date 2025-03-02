@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage Socket.IO Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        #connection-status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        #log {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .control-panel {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        input, select {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RoadRage Socket.IO Test Client</h1>
+    
+    <div id="connection-status" class="disconnected">
+        Disconnected
+    </div>
+    
+    <div class="control-panel">
+        <h3>Connection</h3>
+        <input type="text" id="server-url" placeholder="Server URL (leave empty for local)" value="http://localhost:5001">
+        <button id="connect-btn">Connect</button>
+        <button id="disconnect-btn">Disconnect</button>
+    </div>
+    
+    <div class="control-panel">
+        <h3>Room</h3>
+        <input type="text" id="room-id" placeholder="Room ID" value="public">
+        <button id="join-room-btn">Join Room</button>
+        <button id="create-room-btn">Create Private Room</button>
+    </div>
+    
+    <div class="control-panel">
+        <h3>Player</h3>
+        <input type="text" id="player-name" placeholder="Player Name" value="TestPlayer">
+        <select id="bike-type">
+            <option value="default">Default Bike</option>
+            <option value="sport">Sport Bike</option>
+            <option value="cruiser">Cruiser Bike</option>
+        </select>
+        <button id="ready-btn">Ready</button>
+    </div>
+    
+    <h3>Event Log</h3>
+    <div id="log"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        // DOM Elements
+        const connectionStatus = document.getElementById('connection-status');
+        const serverUrlInput = document.getElementById('server-url');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const roomIdInput = document.getElementById('room-id');
+        const joinRoomBtn = document.getElementById('join-room-btn');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const playerNameInput = document.getElementById('player-name');
+        const bikeTypeSelect = document.getElementById('bike-type');
+        const readyBtn = document.getElementById('ready-btn');
+        const logElement = document.getElementById('log');
+        
+        // Socket.IO instance
+        let socket = null;
+        let playerId = null;
+        
+        // Log function
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            entry.className = type;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Connect to server
+        connectBtn.addEventListener('click', () => {
+            const serverUrl = serverUrlInput.value.trim();
+            
+            try {
+                connectionStatus.className = 'connecting';
+                connectionStatus.textContent = 'Connecting...';
+                
+                if (serverUrl) {
+                    log(`Connecting to server at: ${serverUrl}`);
+                    socket = io(serverUrl);
+                } else {
+                    log('Connecting to server at current domain');
+                    socket = io();
+                }
+                
+                // Connection events
+                socket.on('connect', () => {
+                    connectionStatus.className = 'connected';
+                    connectionStatus.textContent = 'Connected';
+                    log('Connected to server', 'success');
+                });
+                
+                socket.on('disconnect', () => {
+                    connectionStatus.className = 'disconnected';
+                    connectionStatus.textContent = 'Disconnected';
+                    log('Disconnected from server', 'error');
+                });
+                
+                socket.on('connect_error', (error) => {
+                    connectionStatus.className = 'disconnected';
+                    connectionStatus.textContent = 'Connection Error';
+                    log(`Connection error: ${error}`, 'error');
+                });
+                
+                // Game events
+                socket.on('player_connected', (data) => {
+                    playerId = data.player_id;
+                    log(`Player connected: ${playerId}`);
+                    log(`Total players: ${Object.keys(data.players).length}`);
+                });
+                
+                socket.on('room_joined', (data) => {
+                    log(`Joined room: ${data.room_id}`);
+                    log(`Players in room: ${Object.keys(data.players).length}`);
+                    
+                    // List players
+                    Object.values(data.players).forEach(player => {
+                        log(`- Player ${player.name} (${player.id})`);
+                    });
+                });
+                
+                socket.on('player_left', (data) => {
+                    log(`Player left: ${data.player_id}`);
+                });
+                
+                socket.on('player_ready_changed', (data) => {
+                    log(`Player ${data.player_id} ready: ${data.ready}`);
+                });
+                
+                socket.on('game_countdown_started', (data) => {
+                    log(`Game countdown started: ${data.countdown}`);
+                });
+                
+                socket.on('game_started', () => {
+                    log('Game started!', 'success');
+                });
+                
+                socket.on('private_room_created', (data) => {
+                    log(`Private room created: ${data.room_id}`);
+                    roomIdInput.value = data.room_id;
+                });
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                connectionStatus.className = 'disconnected';
+                connectionStatus.textContent = 'Connection Failed';
+            }
+        });
+        
+        // Disconnect from server
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        });
+        
+        // Join room
+        joinRoomBtn.addEventListener('click', () => {
+            if (!socket) {
+                log('Not connected to server', 'error');
+                return;
+            }
+            
+            const roomId = roomIdInput.value.trim() || 'public';
+            log(`Joining room: ${roomId}`);
+            socket.emit('join_room', { room_id: roomId });
+        });
+        
+        // Create private room
+        createRoomBtn.addEventListener('click', () => {
+            if (!socket) {
+                log('Not connected to server', 'error');
+                return;
+            }
+            
+            log('Creating private room');
+            socket.emit('create_private_room');
+        });
+        
+        // Set player ready
+        readyBtn.addEventListener('click', () => {
+            if (!socket) {
+                log('Not connected to server', 'error');
+                return;
+            }
+            
+            log('Setting player ready');
+            socket.emit('player_ready', { ready: true });
+        });
+    </script>
+</body>
+</html> 
