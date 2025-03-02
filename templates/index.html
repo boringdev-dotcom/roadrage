@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage - Multiplayer Bike Racing Game</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="game-title">
+            <h1>ROAD<span>RAGE</span></h1>
+            <p>A multiplayer bike racing game inspired by Road Rash</p>
+        </div>
+        
+        <div class="menu">
+            <div class="menu-item" id="play-public">
+                <h2>Play with Random Players</h2>
+                <p>Join a public game with random players</p>
+            </div>
+            
+            <div class="menu-item" id="create-private">
+                <h2>Create Private Game</h2>
+                <p>Create a private game to play with friends</p>
+            </div>
+            
+            <div class="menu-item" id="join-private">
+                <h2>Join Private Game</h2>
+                <p>Join a private game with a room code</p>
+            </div>
+            
+            <div class="menu-item" id="settings">
+                <h2>Settings</h2>
+                <p>Adjust game settings</p>
+            </div>
+        </div>
+        
+        <div class="modal" id="private-room-modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Join Private Game</h2>
+                <input type="text" id="room-code" placeholder="Enter room code">
+                <button id="join-room-btn">Join Game</button>
+            </div>
+        </div>
+        
+        <div class="modal" id="create-room-modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Create Private Game</h2>
+                <p>Share this code with your friends:</p>
+                <div id="room-code-display"></div>
+                <button id="start-private-game-btn">Start Game</button>
+            </div>
+        </div>
+        
+        <div class="modal" id="settings-modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Settings</h2>
+                
+                <div class="setting">
+                    <label for="player-name">Player Name:</label>
+                    <input type="text" id="player-name" placeholder="Enter your name">
+                </div>
+                
+                <div class="setting">
+                    <label for="bike-select">Select Bike:</label>
+                    <select id="bike-select">
+                        <option value="default">Default Bike</option>
+                        <option value="sport">Sport Bike</option>
+                        <option value="cruiser">Cruiser Bike</option>
+                    </select>
+                </div>
+                
+                <div class="setting">
+                    <label for="graphics-quality">Graphics Quality:</label>
+                    <select id="graphics-quality">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                
+                <div class="setting">
+                    <label>Controls:</label>
+                    <p>W/Up Arrow: Accelerate</p>
+                    <p>S/Down Arrow: Brake</p>
+                    <p>A/D or Left/Right Arrow: Steer</p>
+                    <p>Space: Jump</p>
+                    <p>Left Mouse: Punch</p>
+                    <p>Right Mouse: Kick</p>
+                </div>
+                
+                <button id="save-settings-btn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/static/js/menu.js"></script>
+</body>
+</html> 

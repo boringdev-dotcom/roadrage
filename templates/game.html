@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage - Game</title>
+    <link rel="stylesheet" href="/static/css/game.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <h1>ROAD<span>RAGE</span></h1>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+            <p>Loading game assets...</p>
+        </div>
+    </div>
+    
+    <div id="game-ui">
+        <div id="speedometer">
+            <div class="speed-value">0</div>
+            <div class="speed-unit">km/h</div>
+        </div>
+        
+        <div id="health-bar">
+            <div class="health-label">HEALTH</div>
+            <div class="health-container">
+                <div class="health-fill"></div>
+            </div>
+        </div>
+        
+        <div id="position-display">
+            <div class="position-value">1st</div>
+            <div class="position-label">POSITION</div>
+        </div>
+        
+        <div id="lap-counter">
+            <div class="lap-value">1/3</div>
+            <div class="lap-label">LAP</div>
+        </div>
+        
+        <div id="timer">
+            <div class="timer-value">00:00</div>
+            <div class="timer-label">TIME</div>
+        </div>
+        
+        <div id="minimap">
+            <!-- Minimap will be rendered here -->
+        </div>
+        
+        <div id="player-list">
+            <!-- Player list will be rendered here -->
+        </div>
+    </div>
+    
+    <div id="countdown-overlay" class="hidden">
+        <div class="countdown-value">3</div>
+    </div>
+    
+    <div id="game-over-overlay" class="hidden">
+        <div class="game-over-content">
+            <h2>Race Finished!</h2>
+            <div id="race-results">
+                <!-- Race results will be rendered here -->
+            </div>
+            <button id="return-to-menu-btn">Return to Menu</button>
+            <button id="play-again-btn">Play Again</button>
+        </div>
+    </div>
+    
+    <div id="game-canvas-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+    
+    <div id="chat-container" class="hidden">
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="chat-send-btn">Send</button>
+        </div>
+    </div>
+    
+    <div id="controls-overlay" class="hidden">
+        <div class="controls-content">
+            <h2>Controls</h2>
+            <p>W/Up Arrow: Accelerate</p>
+            <p>S/Down Arrow: Brake</p>
+            <p>A/D or Left/Right Arrow: Steer</p>
+            <p>Space: Jump</p>
+            <p>Left Mouse: Punch</p>
+            <p>Right Mouse: Kick</p>
+            <p>T: Open Chat</p>
+            <p>Esc: Pause Game</p>
+            <button id="close-controls-btn">Close</button>
+        </div>
+    </div>
+    
+    <div id="pause-menu" class="hidden">
+        <div class="pause-content">
+            <h2>Game Paused</h2>
+            <button id="resume-btn">Resume Game</button>
+            <button id="show-controls-btn">Controls</button>
+            <button id="exit-game-btn">Exit to Menu</button>
+        </div>
+    </div>
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Game Scripts -->
+    <script src="/static/js/game/utils.js"></script>
+    <script src="/static/js/game/controls.js"></script>
+    <script src="/static/js/game/bike.js"></script>
+    <script src="/static/js/game/track.js"></script>
+    <script src="/static/js/game/player.js"></script>
+    <script src="/static/js/game/ui.js"></script>
+    <script src="/static/js/game/network.js"></script>
+    <script src="/static/js/game/game.js"></script>
+</body>
+</html> 

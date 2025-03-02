@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        .debug-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #console-output {
+            background-color: #000;
+            color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .log {
+            color: #fff;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .warn {
+            color: #ffd166;
+        }
+        .info {
+            color: #06d6a0;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 300px;
+            background-color: #333;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>RoadRage Debug Tool</h1>
+    
+    <div class="debug-container">
+        <div class="button-container">
+            <button id="test-threejs">Test Three.js</button>
+            <button id="test-game-init">Test Game Initialization</button>
+            <button id="clear-console">Clear Console</button>
+        </div>
+        
+        <div id="canvas-container">
+            <canvas id="debug-canvas"></canvas>
+        </div>
+        
+        <div id="console-output"></div>
+    </div>
+
+    <script>
+        // Override console methods to display in our custom console
+        const consoleOutput = document.getElementById('console-output');
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+
+        function appendToConsole(message, type) {
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'log');
+            originalConsole.log(...args);
+        };
+
+        console.error = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'error');
+            originalConsole.error(...args);
+        };
+
+        console.warn = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'warn');
+            originalConsole.warn(...args);
+        };
+
+        console.info = function(...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ');
+            appendToConsole(message, 'info');
+            originalConsole.info(...args);
+        };
+
+        // Clear console
+        document.getElementById('clear-console').addEventListener('click', () => {
+            consoleOutput.innerHTML = '';
+        });
+
+        // Test Three.js
+        document.getElementById('test-threejs').addEventListener('click', () => {
+            console.log('Testing Three.js initialization...');
+            
+            try {
+                // Check if Three.js is loaded
+                if (typeof THREE === 'undefined') {
+                    console.error('THREE is not defined. Loading Three.js from CDN...');
+                    
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                    script.onload = () => {
+                        console.log('Three.js loaded successfully');
+                        initThreeJs();
+                    };
+                    script.onerror = (error) => {
+                        console.error('Failed to load Three.js:', error);
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    console.log('Three.js is already loaded');
+                    initThreeJs();
+                }
+            } catch (error) {
+                console.error('Error in Three.js test:', error);
+            }
+        });
+
+        function initThreeJs() {
+            try {
+                console.log('Initializing Three.js test scene...');
+                
+                // Clear previous canvas
+                const canvasContainer = document.getElementById('canvas-container');
+                canvasContainer.innerHTML = '<canvas id="debug-canvas"></canvas>';
+                
+                // Create scene
+                const scene = new THREE.Scene();
+                console.log('Scene created');
+                
+                // Create camera
+                const camera = new THREE.PerspectiveCamera(
+                    75,
+                    canvasContainer.clientWidth / canvasContainer.clientHeight,
+                    0.1,
+                    1000
+                );
+                camera.position.z = 5;
+                console.log('Camera created');
+                
+                // Create renderer
+                const renderer = new THREE.WebGLRenderer({
+                    canvas: document.getElementById('debug-canvas'),
+                    antialias: true
+                });
+                renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+                console.log('Renderer created');
+                
+                // Create a cube
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                console.log('Cube added to scene');
+                
+                // Animation function
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    cube.rotation.x += 0.01;
+                    cube.rotation.y += 0.01;
+                    
+                    renderer.render(scene, camera);
+                }
+                
+                // Start animation
+                animate();
+                console.log('Animation started');
+                console.info('Three.js test completed successfully');
+            } catch (error) {
+                console.error('Error initializing Three.js:', error);
+            }
+        }
+
+        // Test Game Initialization
+        document.getElementById('test-game-init').addEventListener('click', () => {
+            console.log('Testing game initialization sequence...');
+            
+            try {
+                // Simulate the game initialization sequence
+                console.log('Step 1: Creating UI');
+                const uiCreated = true;
+                
+                console.log('Step 2: Setting up Three.js');
+                let scene, camera, renderer;
+                
+                try {
+                    // Check if Three.js is loaded
+                    if (typeof THREE === 'undefined') {
+                        throw new Error('THREE is not defined');
+                    }
+                    
+                    // Create scene
+                    scene = new THREE.Scene();
+                    console.log('Scene created successfully');
+                    
+                    // Create camera
+                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    console.log('Camera created successfully');
+                    
+                    // Create renderer
+                    const canvas = document.getElementById('debug-canvas');
+                    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+                    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                    console.log('Renderer created successfully');
+                    
+                } catch (error) {
+                    console.error('Error setting up Three.js:', error);
+                    return;
+                }
+                
+                console.log('Step 3: Loading assets');
+                setTimeout(() => {
+                    console.log('Assets loaded successfully');
+                    
+                    console.log('Step 4: Creating scene elements');
+                    try {
+                        if (!scene) {
+                            throw new Error('Scene is not initialized');
+                        }
+                        
+                        // Add a light
+                        const light = new THREE.AmbientLight(0xffffff, 0.5);
+                        scene.add(light);
+                        console.log('Light added to scene');
+                        
+                        // Add a cube (representing the bike)
+                        const geometry = new THREE.BoxGeometry();
+                        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                        const cube = new THREE.Mesh(geometry, material);
+                        scene.add(cube);
+                        console.log('Bike (cube) added to scene');
+                        
+                        // Position camera
+                        camera.position.set(0, 5, -10);
+                        camera.lookAt(cube.position);
+                        console.log('Camera positioned correctly');
+                        
+                        // Render the scene
+                        renderer.render(scene, camera);
+                        console.log('Scene rendered successfully');
+                        
+                        console.info('Game initialization test completed successfully');
+                    } catch (error) {
+                        console.error('Error creating scene elements:', error);
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error in game initialization test:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

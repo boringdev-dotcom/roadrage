@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadRage Game Test</title>
+    <link rel="stylesheet" href="static/css/game.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #game-canvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #loading-progress {
+            width: 300px;
+            height: 20px;
+            background-color: #333;
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #loading-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50;
+            transition: width 0.3s;
+        }
+        .game-notification {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 900;
+            max-width: 300px;
+            max-height: 200px;
+            overflow: auto;
+            font-size: 12px;
+        }
+        #offline-mode-indicator {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            z-index: 900;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+    
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h2>Loading RoadRage...</h2>
+        <div id="loading-progress">
+            <div id="loading-bar"></div>
+        </div>
+    </div>
+    
+    <!-- Game UI Elements -->
+    <div id="game-ui">
+        <div id="speedometer">0 km/h</div>
+        <div id="health-bar-container">
+            <div id="health-bar"></div>
+        </div>
+        <div id="lap-counter">Lap: 1/3</div>
+        <div id="player-list"></div>
+    </div>
+    
+    <!-- Game Overlays -->
+    <div id="countdown-overlay" style="display: none;">
+        <div id="countdown">3</div>
+    </div>
+    
+    <div id="pause-menu" style="display: none;">
+        <h2>Game Paused</h2>
+        <button id="resume-btn">Resume</button>
+        <button id="show-controls-btn">Controls</button>
+        <button id="exit-game-btn">Exit Game</button>
+    </div>
+    
+    <div id="controls-overlay" style="display: none;">
+        <h2>Controls</h2>
+        <div class="controls-list">
+            <div class="control-item">W / Up Arrow - Accelerate</div>
+            <div class="control-item">S / Down Arrow - Brake</div>
+            <div class="control-item">A / Left Arrow - Turn Left</div>
+            <div class="control-item">D / Right Arrow - Turn Right</div>
+            <div class="control-item">Space - Jump</div>
+            <div class="control-item">E - Punch</div>
+            <div class="control-item">Q - Kick</div>
+            <div class="control-item">Esc - Pause</div>
+        </div>
+        <button id="close-controls-btn">Close</button>
+    </div>
+    
+    <div id="game-over-overlay" style="display: none;">
+        <h2>Race Finished!</h2>
+        <div id="race-results">
+            <div id="position">Position: 1st</div>
+            <div id="time">Time: 00:00.00</div>
+            <div id="best-lap">Best Lap: 00:00.00</div>
+        </div>
+        <button id="play-again-btn">Play Again</button>
+        <button id="return-to-menu-btn">Return to Menu</button>
+    </div>
+    
+    <div class="game-notification" id="game-notification"></div>
+    
+    <div id="debug-panel"></div>
+    <div id="offline-mode-indicator" style="display: none;">OFFLINE MODE</div>
+    
+    <!-- Load Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Load Mock Socket.IO (will only be used if real Socket.IO is not available) -->
+    <script src="static/js/game/mock-socket.js"></script>
+    
+    <!-- Try to load real Socket.IO -->
+    <script>
+        // Check if Socket.IO is available
+        function loadSocketIO() {
+            return new Promise((resolve, reject) => {
+                if (typeof io !== 'undefined') {
+                    console.log('Socket.IO is already loaded');
+                    resolve(true);
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js';
+                script.onload = () => {
+                    console.log('Socket.IO loaded successfully');
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    console.warn('Failed to load Socket.IO, using mock implementation');
+                    document.getElementById('offline-mode-indicator').style.display = 'block';
+                    resolve(false);
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Load Socket.IO before loading game scripts
+        loadSocketIO().then(() => {
+            // Now load game scripts
+            loadGameScripts();
+        });
+        
+        function loadGameScripts() {
+            const scripts = [
+                'static/js/game/utils.js',
+                'static/js/game/ui.js',
+                'static/js/game/controls.js',
+                'static/js/game/network.js',
+                'static/js/game/track.js',
+                'static/js/game/bike.js',
+                'static/js/game/player.js',
+                'static/js/game/game.js'
+            ];
+            
+            let loaded = 0;
+            
+            scripts.forEach(src => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    loaded++;
+                    if (loaded === scripts.length) {
+                        console.log('All game scripts loaded');
+                        initGame();
+                    }
+                };
+                script.onerror = (error) => {
+                    console.error('Error loading script:', src, error);
+                };
+                document.body.appendChild(script);
+            });
+        }
+        
+        function initGame() {
+            // Debug panel
+            const debugPanel = document.getElementById('debug-panel');
+            
+            // Override console.log for debugging
+            const originalConsoleLog = console.log;
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                
+                // Add to debug panel
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                ).join(' ');
+                
+                const entry = document.createElement('div');
+                entry.textContent = message;
+                debugPanel.appendChild(entry);
+                
+                // Limit entries
+                while (debugPanel.children.length > 20) {
+                    debugPanel.removeChild(debugPanel.firstChild);
+                }
+                
+                // Auto-scroll
+                debugPanel.scrollTop = debugPanel.scrollHeight;
+            };
+            
+            // Initialize localStorage values for testing
+            localStorage.setItem('playerName', 'TestPlayer');
+            localStorage.setItem('bikeType', 'sport');
+            localStorage.setItem('roomId', 'test-room');
+            
+            // Initialize game
+            console.log('Initializing game...');
+            const game = new RoadRageGame();
+            game.init();
+        }
+    </script>
+</body>
+</html> 
