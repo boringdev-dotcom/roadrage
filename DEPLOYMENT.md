@@ -117,6 +117,22 @@ If Socket.IO is not connecting:
 3. Ensure CORS is properly configured on the server.
 4. Check if the server is behind a proxy or load balancer that might be affecting WebSocket connections.
 
+### Werkzeug Import Errors
+
+If you encounter an error like `ImportError: cannot import name 'url_quote' from 'werkzeug.urls'`:
+
+1. This is caused by a version mismatch between Flask and Werkzeug.
+2. Make sure your requirements.txt includes `werkzeug==2.0.3` to ensure compatibility with Flask 2.0.1.
+3. If using a different version of Flask, ensure you use a compatible Werkzeug version.
+
+### Python Version Compatibility
+
+If you encounter dependency or import errors:
+
+1. Use Python 3.9 for the most reliable compatibility with the dependencies.
+2. Ensure the runtime.txt file specifies the correct Python version (e.g., `python-3.9.18`).
+3. Some packages like eventlet may have compatibility issues with newer Python versions.
+
 ## Important Notes
 
 - When deploying, make sure the `static/js/config.js` file is properly configured.
