@@ -9,12 +9,26 @@
         document.addEventListener('DOMContentLoaded', function() {
             const statusElement = document.getElementById('status');
             const messageElement = document.getElementById('message');
+            const serverUrlElement = document.getElementById('server-url');
             
             try {
                 statusElement.textContent = 'Connecting to server...';
                 
+                // Determine server URL based on current location
+                const isLocalhost = window.location.hostname === 'localhost' || 
+                                   window.location.hostname === '127.0.0.1';
+                
+                let serverUrl;
+                if (isLocalhost) {
+                    serverUrl = 'http://localhost:5002';
+                } else {
+                    serverUrl = window.location.origin;
+                }
+                
+                serverUrlElement.textContent = serverUrl;
+                
                 // Try to connect to the server
-                const socket = io('http://localhost:5002');
+                const socket = io(serverUrl);
                 
                 socket.on('connect', function() {
                     statusElement.textContent = 'Connected to server!';
@@ -39,6 +53,7 @@
 </head>
 <body>
     <h1>Server Test</h1>
+    <p>Server URL: <span id="server-url">Detecting...</span></p>
     <p>Status: <span id="status">Initializing...</span></p>
     <p id="message"></p>
 </body>

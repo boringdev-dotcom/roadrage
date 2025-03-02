@@ -1,1 +1,1 @@
-web: cd server && gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 app:app 
+web: cd server && gunicorn --worker-class eventlet -w 1 app:app 

@@ -72,10 +72,17 @@ This guide provides instructions for deploying the RoadRage game to various plat
 3. Connect your GitHub repository.
 4. Configure the service:
    - Build Command: `pip install -r requirements.txt`
-   - Start Command: `cd server && python app.py`
-   - Environment Variables: `PORT=10000`
+   - Start Command: `cd server && gunicorn --worker-class eventlet -w 1 app:app`
+   - Environment Variables: 
+     - `PORT=10000`
+     - `PYTHON_VERSION=3.9` (Important: Use Python 3.9 for better compatibility)
 
 5. Click "Create Web Service".
+6. After deployment, test the connection using the test_server.html file.
+
+**Note for Render Deployment:**
+- We use eventlet instead of gevent for better compatibility with Render's environment.
+- Specifying Python 3.9 helps avoid compatibility issues with some dependencies.
 
 ### Option 3: Deploying to Railway
 
