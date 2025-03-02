@@ -141,9 +141,18 @@ def handle_player_ready(data):
             'ready': ready_status
         }, to=room_id)
         
-        # Check if all players are ready
-        all_ready = all(player['ready'] for player in rooms[room_id]['players'].values())
-        if all_ready and len(rooms[room_id]['players']) > 1:
+        # We no longer automatically start the game when all players are ready
+        # This will now be controlled by the host
+
+@socketio.on('start_game')
+def handle_start_game():
+    player_id = session.get('player_id')
+    room_id = players[player_id].get('room')
+    
+    if player_id and room_id and player_id in players and room_id in rooms:
+        # Check if this is the first player who joined (host)
+        room_players = list(rooms[room_id]['players'].keys())
+        if room_players and room_players[0] == player_id:
             # Start countdown
             rooms[room_id]['game_state']['status'] = 'countdown'
             emit('game_countdown_started', {
@@ -151,10 +160,13 @@ def handle_player_ready(data):
             }, to=room_id)
             
             # This would be handled with a proper timer in production
-            # For simplicity, we're just emitting the start event immediately
+            # For simplicity, we're just emitting the start event after a delay
             socketio.sleep(3)
             rooms[room_id]['game_state']['status'] = 'racing'
             emit('game_started', {}, to=room_id)
+        else:
+            # Only the host can start the game
+            emit('error', {'message': 'Only the host can start the game'})
 
 @socketio.on('create_private_room')
 def handle_create_private_room():

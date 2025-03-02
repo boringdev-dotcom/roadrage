@@ -57,6 +57,9 @@ class RoadRageGame {
         this.enforceTrackBoundaries = this.enforceTrackBoundaries.bind(this);
         this.finishRace = this.finishRace.bind(this);
         this.gameOver = this.gameOver.bind(this);
+        this.initNetwork = this.initNetwork.bind(this);
+        this.initEventListeners = this.initEventListeners.bind(this);
+        this.toggleReady = this.toggleReady.bind(this);
     }
     
     init() {
@@ -72,29 +75,24 @@ class RoadRageGame {
             try {
                 this.audioManager = new AudioManager();
                 this.audioManager.init();
+                console.log('Audio initialized successfully');
             } catch (error) {
                 console.error('Error initializing AudioManager:', error);
                 this.audioManager = null;
             }
-            
-            // Initialize network
-            try {
-                this.network = new GameNetwork();
-                this.network.init();
-                console.log('Network initialized successfully');
-            } catch (networkError) {
-                console.error('Error initializing network:', networkError);
-                this.ui.showNotification('Network initialization failed. Game will run in offline mode.');
-            }
-            
-            // Set up event listeners
-            this.setupEventListeners();
             
             // Initialize Three.js
             this.setupThreeJS();
             
             // Initialize controls
             this.controls = new GameControls();
+            this.controls.init();
+            
+            // Initialize network
+            this.initNetwork();
+            
+            // Set up event listeners
+            this.initEventListeners();
             
             // Load assets and create scene
             this.loadAssets()
@@ -105,14 +103,7 @@ class RoadRageGame {
                     // Create scene with game objects
                     this.createScene();
                     
-                    // Set up network callbacks if network is available
-                    if (this.network) {
-                        this.setupNetworkCallbacks();
-                        
-                        // Join room from localStorage
-                        const roomId = localStorage.getItem('roomId') || 'public';
-                        this.network.joinRoom(roomId);
-                    }
+                    // Room joining is now handled in the onReady callback in initNetwork
                     
                     // Mark as initialized
                     this.isInitialized = true;
@@ -129,19 +120,18 @@ class RoadRageGame {
                         console.log('Game initialized successfully');
                         
                         // If no network, start the game in single player mode immediately
-                        // Otherwise, start after a short delay to ensure everything is ready
-                        setTimeout(() => {
-                            if (!this.network || !this.isStarted) {
+                        if (!this.network) {
+                            setTimeout(() => {
                                 this.startGame();
                                 this.ui.showNotification('Starting single player mode');
                                 console.log('Game started in single player mode');
-                            }
-                        }, 2000);
+                            }, 1000);
+                        }
                     }, 500);
                 })
                 .catch(error => {
-                    console.error('Error initializing game:', error);
-                    this.ui.showNotification('Error initializing game. Please refresh the page.');
+                    console.error('Error loading assets:', error);
+                    this.ui.showNotification('Error loading game assets. Please refresh the page.');
                 });
         } catch (error) {
             console.error('Error in game initialization:', error);
@@ -261,7 +251,22 @@ class RoadRageGame {
         }
     }
     
-    setupEventListeners() {
+    initEventListeners() {
+        // Window events
+        window.addEventListener('resize', this.handleResize);
+        
+        // Game events
+        document.addEventListener('toggle-ready', () => {
+            this.toggleReady();
+        });
+        
+        // Add event listener for start-game button
+        document.addEventListener('start-game', () => {
+            if (this.network) {
+                this.network.startGame();
+            }
+        });
+        
         // Pause game on Escape key
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
@@ -320,8 +325,20 @@ class RoadRageGame {
                         }
                     });
                     
-                    // Check game state
+                    // Check if this player is the host (first player in the room)
+                    const playerIds = Object.keys(players);
+                    const isHost = playerIds.length > 0 && playerIds[0] === this.playerId;
+                    if (this.ui) {
+                        this.ui.setHostStatus(isHost);
+                    }
+                    
+                    // Set game status
                     const gameState = data.game_state || {};
+                    if (this.ui) {
+                        this.ui.setGameStatus(gameState.status || 'waiting');
+                    }
+                    
+                    // Check game state
                     if (gameState.status === 'countdown') {
                         this.ui.showCountdown(gameState.countdown);
                     } else if (gameState.status === 'racing') {
@@ -386,6 +403,23 @@ class RoadRageGame {
                 });
             } else {
                 console.warn('onCombatAction method not available in network');
+            }
+            
+            // Player ready changed callback
+            if (typeof this.network.onPlayerReadyChanged === 'function') {
+                this.network.onPlayerReadyChanged((data) => {
+                    // Update player ready status
+                    if (this.players[data.player_id]) {
+                        this.players[data.player_id].ready = data.ready;
+                        
+                        // Update UI
+                        if (this.ui) {
+                            this.ui.updatePlayerList(this.players);
+                        }
+                    }
+                });
+            } else {
+                console.warn('onPlayerReadyChanged method not available in network');
             }
         } catch (error) {
             console.error('Error setting up network callbacks:', error);
@@ -666,37 +700,26 @@ class RoadRageGame {
     
     addOtherPlayer(playerId, playerData) {
         try {
-            console.log('Adding other player:', playerId);
+            console.log('Adding other player:', playerId, playerData);
             
             // Create player object
-            const player = new Player(
-                playerId,
-                playerData.name || `Player_${playerId.substring(0, 5)}`,
-                playerData.bike || 'default'
-            );
+            const player = {
+                id: playerId,
+                name: playerData.name || `Player_${playerId.substring(0, 5)}`,
+                ready: playerData.ready || false,
+                position: playerData.position || { x: 0, y: 0, z: 0 },
+                rotation: playerData.rotation || { x: 0, y: 0, z: 0 },
+                speed: playerData.speed || 0,
+                bike: playerData.bike || 'default',
+                isCurrentPlayer: false
+            };
             
-            // Create bike for player
-            const bike = new OtherPlayerBike(this.scene, playerData.bike || 'default');
-            bike.create();
-            
-            // Set initial position and rotation
-            if (playerData.position) {
-                bike.setPosition(playerData.position);
-            }
-            
-            if (playerData.rotation) {
-                bike.setRotation(playerData.rotation);
-            }
-            
-            // Set bike for player
-            player.setBike(bike);
-            
-            // Add to players list
+            // Add to players object
             this.players[playerId] = player;
             
             // Update UI player list
             if (this.ui) {
-                this.ui.updatePlayerList(this.playerId, this.players);
+                this.ui.updatePlayerList(this.players);
             }
         } catch (error) {
             console.error('Error adding other player:', error);
@@ -705,23 +728,15 @@ class RoadRageGame {
     
     removeOtherPlayer(playerId) {
         try {
-            console.log('Removing player:', playerId);
+            console.log('Removing other player:', playerId);
             
-            // Get player
-            const player = this.players[playerId];
-            
-            if (player) {
-                // Remove bike from scene
-                if (player.bike) {
-                    player.bike.remove();
-                }
-                
-                // Remove from players list
+            // Remove from players object
+            if (this.players[playerId]) {
                 delete this.players[playerId];
                 
                 // Update UI player list
                 if (this.ui) {
-                    this.ui.updatePlayerList(this.playerId, this.players);
+                    this.ui.updatePlayerList(this.players);
                 }
             }
         } catch (error) {
@@ -771,6 +786,7 @@ class RoadRageGame {
                     // Update UI
                     if (this.ui) {
                         this.ui.updateHealthBar(this.playerBike.health);
+                        this.ui.showDamageEffect();
                         this.ui.showNotification('Collision with ' + player.name);
                     }
                 }
@@ -804,6 +820,7 @@ class RoadRageGame {
             // Update UI
             if (this.ui) {
                 this.ui.updateHealthBar(this.playerBike.health);
+                this.ui.showDamageEffect();
                 this.ui.showNotification(`${data.action_type} from ${this.players[data.player_id]?.name || 'another player'}`);
             }
         }
@@ -971,6 +988,196 @@ class RoadRageGame {
             } catch (error) {
                 console.warn('Error stopping music:', error);
             }
+        }
+    }
+
+    initNetwork() {
+        try {
+            // Initialize network
+            this.network = new GameNetwork();
+            this.network.init(); // Make sure to call init() to set up the socket
+            
+            // We'll set up the player in the onReady callback instead of immediately
+            this.network.onReady(() => {
+                this.playerId = this.network.getPlayerId();
+                
+                // Add current player to players object
+                if (this.playerId) {
+                    this.players[this.playerId] = {
+                        id: this.playerId,
+                        name: `Player_${this.playerId.substring(0, 5)}`,
+                        ready: false,
+                        position: { x: 0, y: 0, z: 0 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        speed: 0,
+                        bike: 'default',
+                        isCurrentPlayer: true
+                    };
+                    
+                    // Join room from localStorage
+                    const roomId = localStorage.getItem('roomId') || 'public';
+                    this.network.joinRoom(roomId);
+                }
+            });
+            
+            // Room joined callback
+            if (typeof this.network.onRoomJoined === 'function') {
+                this.network.onRoomJoined((data) => {
+                    console.log('Joined room:', data.room_id);
+                    
+                    // Update current player data from server
+                    if (data.players && data.players[this.playerId]) {
+                        const serverPlayerData = data.players[this.playerId];
+                        this.players[this.playerId] = {
+                            ...serverPlayerData,
+                            isCurrentPlayer: true
+                        };
+                    }
+                    
+                    // Add existing players
+                    const players = data.players || {};
+                    Object.keys(players).forEach(playerId => {
+                        if (playerId !== this.playerId) {
+                            this.addOtherPlayer(playerId, players[playerId]);
+                        }
+                    });
+                    
+                    // Check if this player is the host (first player in the room)
+                    const playerIds = Object.keys(players);
+                    const isHost = playerIds.length > 0 && playerIds[0] === this.playerId;
+                    if (this.ui) {
+                        this.ui.setHostStatus(isHost);
+                    }
+                    
+                    // Set game status
+                    const gameState = data.game_state || {};
+                    if (this.ui) {
+                        this.ui.setGameStatus(gameState.status || 'waiting');
+                    }
+                    
+                    // Update player list
+                    if (this.ui) {
+                        this.ui.updatePlayerList(this.players);
+                    }
+                    
+                    // Check game state
+                    if (gameState.status === 'countdown') {
+                        this.ui.showCountdown(gameState.countdown);
+                    } else if (gameState.status === 'racing') {
+                        this.startGame();
+                    }
+                });
+            } else {
+                console.warn('onRoomJoined method not available in network');
+            }
+            
+            // Player joined callback
+            if (typeof this.network.onPlayerJoined === 'function') {
+                this.network.onPlayerJoined((data) => {
+                    if (data.player_id !== this.playerId) {
+                        this.addOtherPlayer(data.player_id, data);
+                    }
+                });
+            } else {
+                console.warn('onPlayerJoined method not available in network');
+            }
+            
+            // Player left callback
+            if (typeof this.network.onPlayerLeft === 'function') {
+                this.network.onPlayerLeft((data) => {
+                    this.removeOtherPlayer(data.player_id);
+                });
+            } else {
+                console.warn('onPlayerLeft method not available in network');
+            }
+            
+            // Player updated callback
+            if (typeof this.network.onPlayerUpdated === 'function') {
+                this.network.onPlayerUpdated((data) => {
+                    this.updateOtherPlayer(data.player_id, data);
+                });
+            } else {
+                console.warn('onPlayerUpdated method not available in network');
+            }
+            
+            // Game started callback
+            if (typeof this.network.onGameStarted === 'function') {
+                this.network.onGameStarted(() => {
+                    this.startGame();
+                });
+            } else {
+                console.warn('onGameStarted method not available in network');
+            }
+            
+            // Game over callback
+            if (typeof this.network.onGameOver === 'function') {
+                this.network.onGameOver((data) => {
+                    this.endGame(data);
+                });
+            } else {
+                console.warn('onGameOver method not available in network');
+            }
+            
+            // Combat action callback
+            if (typeof this.network.onCombatAction === 'function') {
+                this.network.onCombatAction((data) => {
+                    this.handleCombatAction(data);
+                });
+            } else {
+                console.warn('onCombatAction method not available in network');
+            }
+            
+            // Player ready changed callback
+            if (typeof this.network.onPlayerReadyChanged === 'function') {
+                this.network.onPlayerReadyChanged((data) => {
+                    // Update player ready status
+                    if (this.players[data.player_id]) {
+                        this.players[data.player_id].ready = data.ready;
+                        
+                        // Update UI
+                        if (this.ui) {
+                            this.ui.updatePlayerList(this.players);
+                        }
+                    }
+                });
+            } else {
+                console.warn('onPlayerReadyChanged method not available in network');
+            }
+        } catch (error) {
+            console.error('Error setting up network callbacks:', error);
+            if (this.ui) {
+                this.ui.showNotification('Error setting up network. Some multiplayer features may not work.');
+            }
+        }
+    }
+
+    toggleReady() {
+        console.log('Toggle ready called');
+        
+        if (this.network) {
+            // Toggle ready status
+            const currentPlayer = this.players[this.playerId];
+            
+            if (!currentPlayer) {
+                console.error('Cannot toggle ready: Current player not found in players list');
+                return;
+            }
+            
+            const newReadyStatus = !currentPlayer.ready;
+            console.log(`Toggling ready status from ${currentPlayer.ready} to ${newReadyStatus}`);
+            
+            // Update local player
+            currentPlayer.ready = newReadyStatus;
+            
+            // Send to server
+            this.network.sendPlayerReady(newReadyStatus);
+            
+            // Update UI
+            if (this.ui) {
+                this.ui.updatePlayerList(this.players);
+            }
+        } else {
+            console.error('Cannot toggle ready: Network not initialized');
         }
     }
 }

@@ -30,6 +30,8 @@ class GameUI {
         this.boundaryWarningTimeout = null;
         this.damageEffectTimeout = null;
         this.slipEffectTimeout = null;
+        this.isHost = false;
+        this.gameStatus = 'waiting';
         
         // Bind methods
         this.init = this.init.bind(this);
@@ -65,6 +67,8 @@ class GameUI {
         this.updateLap = this.updateLap.bind(this);
         this.updateLapTime = this.updateLapTime.bind(this);
         this.updateHealth = this.updateHealth.bind(this);
+        this.setHostStatus = this.setHostStatus.bind(this);
+        this.setGameStatus = this.setGameStatus.bind(this);
     }
     
     init() {
@@ -109,7 +113,7 @@ class GameUI {
                 boundaryWarning.style.left = '0';
                 boundaryWarning.style.width = '100%';
                 boundaryWarning.style.height = '100%';
-                boundaryWarning.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+                boundaryWarning.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
                 boundaryWarning.style.color = 'white';
                 boundaryWarning.style.display = 'flex';
                 boundaryWarning.style.justifyContent = 'center';
@@ -132,7 +136,7 @@ class GameUI {
                 damageEffect.style.left = '0';
                 damageEffect.style.width = '100%';
                 damageEffect.style.height = '100%';
-                damageEffect.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                damageEffect.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
                 damageEffect.style.zIndex = '999';
                 damageEffect.style.pointerEvents = 'none';
                 document.body.appendChild(damageEffect);
@@ -527,34 +531,93 @@ class GameUI {
     }
     
     updatePlayerList(players) {
-        // Clear player list
-        this.playerList.innerHTML = '';
+        if (!this.playerList) {
+            console.error('Cannot update player list: Player list element not found');
+            return;
+        }
         
-        // Create player list header
+        console.log('Updating player list with players:', players);
+        
+        // Store players for later use
+        this.players = players;
+        
+        // Clear player list
+        while (this.playerList.firstChild) {
+            this.playerList.removeChild(this.playerList.firstChild);
+        }
+        
+        // Add header
         const header = document.createElement('div');
         header.className = 'player-list-header';
         header.textContent = 'Players';
         this.playerList.appendChild(header);
         
         // Add players
-        if (players) {
-            Object.values(players).forEach(player => {
-                const playerItem = document.createElement('div');
-                playerItem.className = 'player-item';
-                
-                // Add ready indicator if available
-                if (player.ready !== undefined) {
-                    playerItem.classList.add(player.ready ? 'ready' : 'not-ready');
-                }
-                
-                // Add current player indicator
-                if (player.isCurrentPlayer) {
-                    playerItem.classList.add('current-player');
-                }
-                
-                playerItem.textContent = player.name;
-                this.playerList.appendChild(playerItem);
-            });
+        Object.values(players).forEach(player => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'player-item';
+            playerItem.dataset.playerId = player.id;
+            
+            // Add ready indicator if available
+            if (player.ready !== undefined) {
+                playerItem.classList.add(player.ready ? 'ready' : 'not-ready');
+                const readyIndicator = document.createElement('span');
+                readyIndicator.className = 'ready-indicator';
+                readyIndicator.textContent = player.ready ? '✓' : '○';
+                playerItem.appendChild(readyIndicator);
+            }
+            
+            // Add player name
+            const playerName = document.createElement('span');
+            playerName.className = 'player-name';
+            playerName.textContent = player.isCurrentPlayer ? `${player.name} (You)` : player.name;
+            playerItem.appendChild(playerName);
+            
+            // Add current player indicator
+            if (player.isCurrentPlayer) {
+                playerItem.classList.add('current-player');
+            }
+            
+            this.playerList.appendChild(playerItem);
+        });
+        
+        // Add ready button for current player
+        const currentPlayer = Object.values(players).find(p => p.isCurrentPlayer);
+        if (currentPlayer && this.gameStatus === 'waiting') {
+            console.log('Adding ready button for current player');
+            const readyButton = document.createElement('button');
+            readyButton.id = 'ready-button';
+            readyButton.className = 'ready-button';
+            readyButton.textContent = currentPlayer.ready ? 'Not Ready' : 'Ready';
+            readyButton.classList.add(currentPlayer.ready ? 'ready' : 'not-ready');
+            
+            // Add click event with direct function instead of custom event
+            readyButton.onclick = function() {
+                console.log('Ready button clicked');
+                document.dispatchEvent(new CustomEvent('toggle-ready'));
+            };
+            
+            this.playerList.appendChild(readyButton);
+        }
+        
+        // Add start game button if player is host and game is in waiting state
+        const isHost = this.isHost;
+        const gameStatus = this.gameStatus || 'waiting';
+        
+        if (isHost && gameStatus === 'waiting') {
+            console.log('Adding start game button for host');
+            const startButton = document.createElement('button');
+            startButton.id = 'start-game-button';
+            startButton.className = 'start-game-button';
+            startButton.textContent = 'Start Game';
+            
+            // Add click event with direct function instead of custom event
+            startButton.onclick = function() {
+                console.log('Start game button clicked');
+                document.dispatchEvent(new CustomEvent('start-game'));
+            };
+            
+            this.playerList.appendChild(startButton);
         }
     }
     
@@ -659,10 +722,10 @@ class GameUI {
                 clearTimeout(this.damageEffectTimeout);
             }
             
-            // Hide effect after 500ms
+            // Hide effect after 300ms (shorter duration)
             this.damageEffectTimeout = setTimeout(() => {
                 this.damageEffect.style.display = 'none';
-            }, 500);
+            }, 300);
         }
     }
     
@@ -753,12 +816,14 @@ class GameUI {
         
         // Show warning
         if (this.boundaryWarning) {
+            // Make the red tint less intense
+            this.boundaryWarning.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
             this.boundaryWarning.style.display = 'flex';
             
-            // Hide after 2 seconds
+            // Hide after 1 second (shorter duration)
             this.boundaryWarningTimeout = setTimeout(() => {
                 this.boundaryWarning.style.display = 'none';
-            }, 2000);
+            }, 1000);
         }
     }
     
@@ -767,6 +832,22 @@ class GameUI {
         const lapTimeElement = document.querySelector('#lap-time .time-value');
         if (lapTimeElement) {
             lapTimeElement.textContent = this.formatTime(lapTime * 1000); // Convert to milliseconds
+        }
+    }
+    
+    setHostStatus(isHost) {
+        this.isHost = isHost;
+        // Update player list to show/hide start button
+        if (this.playerList && this.players) {
+            this.updatePlayerList(this.players);
+        }
+    }
+    
+    setGameStatus(status) {
+        this.gameStatus = status;
+        // Update player list to show/hide start button
+        if (this.playerList && this.players) {
+            this.updatePlayerList(this.players);
         }
     }
 } 

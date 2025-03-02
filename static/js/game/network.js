@@ -22,6 +22,7 @@ class GameNetwork {
         this.onGameStartedCallback = null;
         this.onGameOverCallback = null;
         this.onCombatActionCallback = null;
+        this.onPlayerReadyChangedCallback = null;
         
         // Bind methods
         this.init = this.init.bind(this);
@@ -43,6 +44,7 @@ class GameNetwork {
         this.onGameStarted = this.onGameStarted.bind(this);
         this.onGameOver = this.onGameOver.bind(this);
         this.onCombatAction = this.onCombatAction.bind(this);
+        this.onPlayerReadyChanged = this.onPlayerReadyChanged.bind(this);
     }
     
     init() {
@@ -83,8 +85,17 @@ class GameNetwork {
     }
     
     joinRoom() {
-        // Join room
-        this.socket.emit('join_room', { room_id: this.roomId });
+        try {
+            // Join room only if socket is initialized
+            if (this.socket) {
+                this.socket.emit('join_room', { room_id: this.roomId });
+                console.log(`Joining room: ${this.roomId}`);
+            } else {
+                console.error('Cannot join room: Socket not initialized');
+            }
+        } catch (error) {
+            console.error('Error joining room:', error);
+        }
     }
     
     setupEventListeners() {
@@ -275,8 +286,18 @@ class GameNetwork {
         this.socket.emit('chat_message', { message });
     }
     
+    startGame() {
+        // Send start game command to server (host only)
+        this.socket.emit('start_game');
+    }
+    
     getPlayerId() {
-        return this.playerId;
+        try {
+            return this.playerId;
+        } catch (error) {
+            console.error('Error getting player ID:', error);
+            return null;
+        }
     }
     
     getPlayers() {
@@ -322,5 +343,9 @@ class GameNetwork {
     
     onCombatAction(callback) {
         this.onCombatActionCallback = callback;
+    }
+    
+    onPlayerReadyChanged(callback) {
+        this.onPlayerReadyChangedCallback = callback;
     }
 } 
