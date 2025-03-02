@@ -107,6 +107,16 @@ If you see CORS errors in the browser console:
 1. Make sure the Socket.IO server has CORS enabled (it should be with `cors_allowed_origins="*"`).
 2. Try using the same port for both servers by setting up a reverse proxy.
 
+### Werkzeug Warning
+
+If you see an error like "The Werkzeug web server is not designed to run in production":
+
+1. Make sure you're using the latest version of the code which includes `allow_unsafe_werkzeug=True` in the `socketio.run()` call.
+2. If you're still seeing the error, you can manually add this parameter:
+   ```python
+   socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+   ```
+
 ## Next Steps
 
 Once you've confirmed that multiplayer works locally, you can deploy the server to a cloud platform following the instructions in DEPLOYMENT.md. 
